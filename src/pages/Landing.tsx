@@ -50,87 +50,87 @@ export default function Landing() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center gradient-hero overflow-hidden">
+      <section className="relative min-h-[85vh] sm:min-h-[90vh] flex items-center justify-center gradient-hero overflow-hidden pt-16">
         <div className="absolute inset-0 scanlines opacity-30" />
         
-        {/* Floating elements */}
-        <div className="absolute top-20 left-10 opacity-20 animate-pulse">
-          <Terminal className="h-16 w-16 text-primary" />
+        {/* Floating elements - hidden on mobile */}
+        <div className="absolute top-20 left-10 opacity-20 animate-pulse hidden sm:block">
+          <Terminal className="h-12 w-12 md:h-16 md:w-16 text-primary" />
         </div>
-        <div className="absolute bottom-40 right-20 opacity-20 animate-pulse delay-500">
-          <Shield className="h-24 w-24 text-secondary" />
+        <div className="absolute bottom-40 right-10 md:right-20 opacity-20 animate-pulse delay-500 hidden sm:block">
+          <Shield className="h-16 w-16 md:h-24 md:w-24 text-secondary" />
         </div>
         
         <div className="container mx-auto px-4 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 mb-8 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-primary/30 bg-primary/10 mb-6 sm:mb-8 animate-fade-in">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-sm text-primary font-mono">Platform Online</span>
+            <span className="text-xs sm:text-sm text-primary font-mono">Platform Online</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in">
+          <h1 className="text-3xl xs:text-4xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 animate-fade-in leading-tight">
             <span className="text-foreground">Encontre Bugs.</span>
             <br />
             <span className="text-primary text-glow">Seja Pago.</span>
           </h1>
           
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-8 animate-fade-in px-2">
             A plataforma que conecta hackers éticos às empresas que precisam de segurança. 
             Encontre vulnerabilidades, reporte com responsabilidade, receba recompensas.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in">
-            <Link to="/auth?mode=signup&role=pentester">
-              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8 py-6 group">
-                <Bug className="mr-2 h-5 w-5" />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-fade-in px-4">
+            <Link to="/auth?mode=signup&role=pentester" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 group">
+                <Bug className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Iniciar como Hunter
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <Link to="/auth?mode=signup&role=company">
-              <Button size="lg" variant="outline" className="border-secondary text-secondary hover:bg-secondary/10 text-lg px-8 py-6">
-                <Shield className="mr-2 h-5 w-5" />
+            <Link to="/auth?mode=signup&role=company" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto border-secondary text-secondary hover:bg-secondary/10 text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6">
+                <Shield className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Cadastrar Empresa
               </Button>
             </Link>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto mt-16">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-3xl mx-auto mt-12 sm:mt-16 px-4">
+            <div className="text-center p-4 rounded-lg bg-card/30 backdrop-blur-sm border border-border/50 sm:bg-transparent sm:border-0 sm:p-0">
+              <div className="text-2xl sm:text-4xl font-bold text-primary font-mono text-glow-sm">
                 {formatCurrency(stats.totalEarnings)}
               </div>
-              <div className="text-sm text-muted-foreground mt-1">Pagos em recompensas</div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1">Pagos em recompensas</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">
+            <div className="text-center p-4 rounded-lg bg-card/30 backdrop-blur-sm border border-border/50 sm:bg-transparent sm:border-0 sm:p-0">
+              <div className="text-2xl sm:text-4xl font-bold text-primary font-mono text-glow-sm">
                 {formatNumber(stats.totalReports)}
               </div>
-              <div className="text-sm text-muted-foreground mt-1">Vulnerabilidades reportadas</div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1">Vulnerabilidades reportadas</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">
+            <div className="text-center p-4 rounded-lg bg-card/30 backdrop-blur-sm border border-border/50 sm:bg-transparent sm:border-0 sm:p-0">
+              <div className="text-2xl sm:text-4xl font-bold text-primary font-mono text-glow-sm">
                 {formatNumber(stats.totalCompanies)}
               </div>
-              <div className="text-sm text-muted-foreground mt-1">Empresas protegidas</div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1">Empresas protegidas</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-24 relative">
+      <section className="py-12 sm:py-16 md:py-24 relative">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
               Como <span className="text-primary text-glow-sm">Funciona</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
               Uma plataforma completa para gestão de programas de Bug Bounty
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             <CyberCard>
               <div className="h-12 w-12 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center mb-4">
                 <Target className="h-6 w-6 text-primary" />
@@ -165,9 +165,9 @@ export default function Landing() {
       </section>
 
       {/* For Companies Section */}
-      <section className="py-24 bg-card/50 relative">
+      <section className="py-12 sm:py-16 md:py-24 bg-card/50 relative">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold mb-6">
                 Para <span className="text-secondary">Empresas</span>
@@ -221,27 +221,27 @@ export default function Landing() {
               </Link>
             </div>
 
-            <div className="relative">
-              <CyberCard glow className="p-8">
-                <div className="font-mono text-sm text-muted-foreground mb-4">
+            <div className="relative order-first md:order-last">
+              <CyberCard glow className="p-4 sm:p-6 md:p-8">
+                <div className="font-mono text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                   // Exemplo de recompensas
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-low/10 border border-severity-low/30">
-                    <span className="font-semibold text-severity-low">Low</span>
-                    <span className="font-mono text-severity-low">MZN 5.000 - MZN 25.000</span>
+                <div className="space-y-2 sm:space-y-3 md:space-y-4">
+                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-low/10 border border-severity-low/30">
+                    <span className="font-semibold text-sm sm:text-base text-severity-low">Low</span>
+                    <span className="font-mono text-xs sm:text-sm text-severity-low">MZN 5K - 25K</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-medium/10 border border-severity-medium/30">
-                    <span className="font-semibold text-severity-medium">Medium</span>
-                    <span className="font-mono text-severity-medium">MZN 25.000 - MZN 100.000</span>
+                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-medium/10 border border-severity-medium/30">
+                    <span className="font-semibold text-sm sm:text-base text-severity-medium">Medium</span>
+                    <span className="font-mono text-xs sm:text-sm text-severity-medium">MZN 25K - 100K</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-high/10 border border-severity-high/30">
-                    <span className="font-semibold text-severity-high">High</span>
-                    <span className="font-mono text-severity-high">MZN 100.000 - MZN 250.000</span>
+                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-high/10 border border-severity-high/30">
+                    <span className="font-semibold text-sm sm:text-base text-severity-high">High</span>
+                    <span className="font-mono text-xs sm:text-sm text-severity-high">MZN 100K - 250K</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-critical/10 border border-severity-critical/30 animate-pulse">
-                    <span className="font-semibold text-severity-critical">Critical</span>
-                    <span className="font-mono text-severity-critical">MZN 250.000+</span>
+                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-critical/10 border border-severity-critical/30 animate-pulse">
+                    <span className="font-semibold text-sm sm:text-base text-severity-critical">Critical</span>
+                    <span className="font-mono text-xs sm:text-sm text-severity-critical">MZN 250K+</span>
                   </div>
                 </div>
               </CyberCard>
@@ -251,32 +251,32 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 relative">
+      <section className="py-12 sm:py-16 md:py-24 relative">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">
             Pronto para começar a <span className="text-primary text-glow-sm">caçar bugs</span>?
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto mb-8">
+          <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto mb-6 sm:mb-8">
             Junte-se a milhares de pesquisadores de segurança e comece a ganhar recompensas hoje mesmo.
           </p>
           <Link to="/auth?mode=signup">
-            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 animate-glow">
+            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 animate-glow text-base sm:text-lg px-6 sm:px-8">
               Criar Conta Gratuita
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8">
+      <footer className="border-t border-border py-6 sm:py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-center sm:text-left">
             <div className="flex items-center gap-2">
-              <Bug className="h-6 w-6 text-primary" />
-              <span className="font-bold text-primary font-mono">AfriSec Hunters</span>
+              <Bug className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <span className="font-bold text-primary font-mono text-sm sm:text-base">AfriSec Hunters</span>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               © 2024 AfriSec Hunters. Todos os direitos reservados.
             </div>
           </div>
