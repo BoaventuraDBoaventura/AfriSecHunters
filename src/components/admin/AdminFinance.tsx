@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, FileText, Download, Percent } from 'lucide-react';
+import { DollarSign, TrendingUp, FileText, Download, Percent, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/lib/exportCsv';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -16,6 +17,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AdminPendingPayouts } from './AdminPendingPayouts';
 
 interface Transaction {
   id: string;
@@ -38,6 +41,7 @@ interface AdminFinanceProps {
 export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -113,139 +117,156 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <CyberCard className="text-center">
-          <FileText className="h-6 w-6 text-primary mx-auto mb-2" />
-          <div className="text-2xl font-bold font-mono text-primary">{transactions.length}</div>
-          <div className="text-sm text-muted-foreground">Total Transações</div>
-        </CyberCard>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" />
+          Visão Geral
+        </TabsTrigger>
+        <TabsTrigger value="payouts" className="flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Pagamentos a Hunters
+        </TabsTrigger>
+      </TabsList>
 
-        <CyberCard className="text-center">
-          <DollarSign className="h-6 w-6 text-secondary mx-auto mb-2" />
-          <div className="text-2xl font-bold font-mono text-secondary">
-            MZN {totalGross.toLocaleString()}
-          </div>
-          <div className="text-sm text-muted-foreground">Volume Total</div>
-        </CyberCard>
+      <TabsContent value="overview" className="space-y-6">
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-4 gap-4">
+          <CyberCard className="text-center">
+            <FileText className="h-6 w-6 text-primary mx-auto mb-2" />
+            <div className="text-2xl font-bold font-mono text-primary">{transactions.length}</div>
+            <div className="text-sm text-muted-foreground">Total Transações</div>
+          </CyberCard>
 
-        <CyberCard glow className="text-center">
-          <Percent className="h-6 w-6 text-primary mx-auto mb-2" />
-          <div className="text-2xl font-bold font-mono text-primary">
-            MZN {totalFees.toLocaleString()}
-          </div>
-          <div className="text-sm text-muted-foreground">Comissões da Plataforma</div>
-        </CyberCard>
+          <CyberCard className="text-center">
+            <DollarSign className="h-6 w-6 text-secondary mx-auto mb-2" />
+            <div className="text-2xl font-bold font-mono text-secondary">
+              MZN {totalGross.toLocaleString()}
+            </div>
+            <div className="text-sm text-muted-foreground">Volume Total</div>
+          </CyberCard>
 
-        <CyberCard className="text-center">
-          <TrendingUp className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold font-mono text-yellow-500">
-            MZN {totalNet.toLocaleString()}
-          </div>
-          <div className="text-sm text-muted-foreground">Pago aos Hunters</div>
-        </CyberCard>
-      </div>
+          <CyberCard glow className="text-center">
+            <Percent className="h-6 w-6 text-primary mx-auto mb-2" />
+            <div className="text-2xl font-bold font-mono text-primary">
+              MZN {totalFees.toLocaleString()}
+            </div>
+            <div className="text-sm text-muted-foreground">Comissões da Plataforma</div>
+          </CyberCard>
 
-      {/* Chart */}
-      {chartData.length > 0 && (
+          <CyberCard className="text-center">
+            <TrendingUp className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
+            <div className="text-2xl font-bold font-mono text-yellow-500">
+              MZN {totalNet.toLocaleString()}
+            </div>
+            <div className="text-sm text-muted-foreground">Pago aos Hunters</div>
+          </CyberCard>
+        </div>
+
+        {/* Chart */}
+        {chartData.length > 0 && (
+          <CyberCard>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Comissões ao Longo do Tempo
+              </h3>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    formatter={(value: number) => [`MZN ${value.toLocaleString()}`, 'Comissão']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="fees"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--primary))' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CyberCard>
+        )}
+
+        {/* Transactions Table */}
         <CyberCard>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Comissões ao Longo do Tempo
+              <FileText className="h-5 w-5 text-primary" />
+              Histórico de Transações
             </h3>
+            <Button variant="outline" size="sm" onClick={handleExport} className="border-primary text-primary hover:bg-primary/10">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  formatter={(value: number) => [`MZN ${value.toLocaleString()}`, 'Comissão']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="fees"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CyberCard>
-      )}
 
-      {/* Transactions Table */}
-      <CyberCard>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Histórico de Transações
-          </h3>
-          <Button variant="outline" size="sm" onClick={handleExport} className="border-primary text-primary hover:bg-primary/10">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-        </div>
-
-        {transactions.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Nenhuma transação encontrada.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase">
-                  <th className="py-3 px-4">Data</th>
-                  <th className="py-3 px-4">Report ID</th>
-                  <th className="py-3 px-4">Valor Bruto</th>
-                  <th className="py-3 px-4">Comissão (10%)</th>
-                  <th className="py-3 px-4">Valor Líquido</th>
-                  <th className="py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map(t => (
-                  <tr key={t.id} className="border-b border-border/50 hover:bg-primary/5">
-                    <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
-                      {format(new Date(t.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                    </td>
-                    <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
-                      {t.report_id.slice(0, 8)}...
-                    </td>
-                    <td className="py-3 px-4 font-mono text-foreground">
-                      MZN {Number(t.gross_amount).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-primary font-semibold">
-                      MZN {Number(t.platform_fee).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-secondary">
-                      MZN {Number(t.net_amount).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        t.status === 'completed' ? 'bg-primary/20 text-primary' : 'bg-warning/20 text-warning'
-                      }`}>
-                        {t.status === 'completed' ? 'Concluído' : 'Pendente'}
-                      </span>
-                    </td>
+          {transactions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhuma transação encontrada.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase">
+                    <th className="py-3 px-4">Data</th>
+                    <th className="py-3 px-4">Report ID</th>
+                    <th className="py-3 px-4">Valor Bruto</th>
+                    <th className="py-3 px-4">Comissão (10%)</th>
+                    <th className="py-3 px-4">Valor Líquido</th>
+                    <th className="py-3 px-4">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CyberCard>
-    </div>
+                </thead>
+                <tbody>
+                  {transactions.map(t => (
+                    <tr key={t.id} className="border-b border-border/50 hover:bg-primary/5">
+                      <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
+                        {format(new Date(t.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      </td>
+                      <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
+                        {t.report_id.slice(0, 8)}...
+                      </td>
+                      <td className="py-3 px-4 font-mono text-foreground">
+                        MZN {Number(t.gross_amount).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-primary font-semibold">
+                        MZN {Number(t.platform_fee).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-secondary">
+                        MZN {Number(t.net_amount).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          t.status === 'completed' ? 'bg-primary/20 text-primary' : 'bg-warning/20 text-warning'
+                        }`}>
+                          {t.status === 'completed' ? 'Concluído' : 'Pendente'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CyberCard>
+      </TabsContent>
+
+      <TabsContent value="payouts">
+        <AdminPendingPayouts dateFrom={dateFrom} dateTo={dateTo} />
+      </TabsContent>
+    </Tabs>
   );
 }
