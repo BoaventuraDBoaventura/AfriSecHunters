@@ -246,10 +246,49 @@ export type Database = {
           },
         ]
       }
+      report_status_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          id: string
+          new_status: Database["public"]["Enums"]["report_status"]
+          notes: string | null
+          old_status: Database["public"]["Enums"]["report_status"] | null
+          report_id: string
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_status: Database["public"]["Enums"]["report_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["report_status"] | null
+          report_id: string
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["report_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["report_status"] | null
+          report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_status_history_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           created_at: string | null
           description: string
+          evidence_urls: string[] | null
           id: string
           impact: string | null
           pentester_id: string
@@ -267,6 +306,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description: string
+          evidence_urls?: string[] | null
           id?: string
           impact?: string | null
           pentester_id: string
@@ -284,6 +324,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string
+          evidence_urls?: string[] | null
           id?: string
           impact?: string | null
           pentester_id?: string
@@ -368,6 +409,11 @@ export type Database = {
         | "auth_bypass"
         | "rce"
         | "other"
+        | "info_disclosure"
+        | "csrf"
+        | "open_redirect"
+        | "business_logic"
+        | "dos"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -508,6 +554,11 @@ export const Constants = {
         "auth_bypass",
         "rce",
         "other",
+        "info_disclosure",
+        "csrf",
+        "open_redirect",
+        "business_logic",
+        "dos",
       ],
     },
   },
