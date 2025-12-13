@@ -187,6 +187,47 @@ export type Database = {
         }
         Relationships: []
       }
+      program_change_history: {
+        Row: {
+          change_type: string
+          changed_by: string
+          changes: Json | null
+          created_at: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          program_id: string
+        }
+        Insert: {
+          change_type: string
+          changed_by: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          program_id: string
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          program_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_change_history_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programs: {
         Row: {
           company_id: string
