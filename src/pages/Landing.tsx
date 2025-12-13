@@ -248,7 +248,7 @@ export default function Landing() {
                   <div className="flex items-center justify-between p-4 rounded-lg bg-severity-low/10 border border-severity-low/30 hover:bg-severity-low/20 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 rounded-full bg-severity-low" />
-                      <span className="font-semibold text-severity-low">Low</span>
+                      <span className="font-semibold text-severity-low">Baixa</span>
                     </div>
                     <span className="font-mono text-sm text-severity-low">MZN 5K - 25K</span>
                   </div>
@@ -256,7 +256,7 @@ export default function Landing() {
                   <div className="flex items-center justify-between p-4 rounded-lg bg-severity-medium/10 border border-severity-medium/30 hover:bg-severity-medium/20 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 rounded-full bg-severity-medium" />
-                      <span className="font-semibold text-severity-medium">Medium</span>
+                      <span className="font-semibold text-severity-medium">Média</span>
                     </div>
                     <span className="font-mono text-sm text-severity-medium">MZN 25K - 100K</span>
                   </div>
@@ -264,7 +264,7 @@ export default function Landing() {
                   <div className="flex items-center justify-between p-4 rounded-lg bg-severity-high/10 border border-severity-high/30 hover:bg-severity-high/20 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 rounded-full bg-severity-high" />
-                      <span className="font-semibold text-severity-high">High</span>
+                      <span className="font-semibold text-severity-high">Alta</span>
                     </div>
                     <span className="font-mono text-sm text-severity-high">MZN 100K - 250K</span>
                   </div>
@@ -273,7 +273,7 @@ export default function Landing() {
                     <div className="absolute inset-0 bg-gradient-to-r from-severity-critical/5 to-transparent animate-pulse" />
                     <div className="flex items-center gap-3 relative z-10">
                       <div className="h-3 w-3 rounded-full bg-severity-critical animate-pulse" />
-                      <span className="font-semibold text-severity-critical">Critical</span>
+                      <span className="font-semibold text-severity-critical">Crítica</span>
                     </div>
                     <span className="font-mono text-sm text-severity-critical relative z-10">MZN 250K+</span>
                   </div>
