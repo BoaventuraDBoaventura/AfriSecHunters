@@ -341,6 +341,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_platform_stats: { Args: never; Returns: Json }
       get_rank_title: { Args: { points: number }; Returns: string }
       has_role: {
         Args: {
