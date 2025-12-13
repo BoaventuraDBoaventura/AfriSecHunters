@@ -57,6 +57,8 @@ export default function CompanyDashboard() {
   const [actionDialog, setActionDialog] = useState<{ type: 'accept' | 'reject' | 'view' | 'pay'; report: ReportWithDetails } | null>(null);
   const [paymentMethodDialog, setPaymentMethodDialog] = useState<ReportWithDetails | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [mobileWalletNumber, setMobileWalletNumber] = useState('');
+  const [mobileWalletType, setMobileWalletType] = useState<'mpesa' | 'emola'>('mpesa');
   const [rewardAmount, setRewardAmount] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -227,14 +229,8 @@ export default function CompanyDashboard() {
       return;
     }
 
-    // Check pentester payout method
-    const pentesterPayoutMethod = report.pentester?.payout_method;
-    if (!pentesterPayoutMethod || (pentesterPayoutMethod !== 'mpesa' && pentesterPayoutMethod !== 'emola')) {
-      toast({ 
-        title: 'Método não disponível', 
-        description: 'O pentester não configurou M-Pesa ou E-Mola como método de recebimento.', 
-        variant: 'destructive' 
-      });
+    if (!mobileWalletNumber || mobileWalletNumber.length < 9) {
+      toast({ title: 'Erro', description: 'Insira um número de telefone válido.', variant: 'destructive' });
       return;
     }
 
@@ -250,7 +246,9 @@ export default function CompanyDashboard() {
         body: { 
           reportId: report.id,
           directPayment: true,
-          rewardAmount: amount
+          rewardAmount: amount,
+          phoneNumber: mobileWalletNumber,
+          walletType: mobileWalletType
         }
       });
 
@@ -259,7 +257,7 @@ export default function CompanyDashboard() {
       if (data.success) {
         toast({ 
           title: 'Pagamento enviado!', 
-          description: `Transferência de MZN ${amount.toLocaleString()} iniciada via ${pentesterPayoutMethod.toUpperCase()}.`
+          description: `Transferência de MZN ${amount.toLocaleString()} iniciada via ${mobileWalletType.toUpperCase()}.`
         });
         fetchData();
       } else {
@@ -270,6 +268,7 @@ export default function CompanyDashboard() {
       toast({ title: 'Erro', description: error.message || 'Erro ao processar pagamento.', variant: 'destructive' });
     } finally {
       setPaymentProcessing(false);
+      setMobileWalletNumber('');
     }
   };
 
@@ -763,7 +762,7 @@ export default function CompanyDashboard() {
             </div>
 
             {/* Payment Methods */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Método de Pagamento</label>
               
               <Button 
@@ -779,24 +778,56 @@ export default function CompanyDashboard() {
                 </div>
               </Button>
               
-              <Button 
-                className="w-full justify-start gap-3 h-auto py-3 bg-muted hover:bg-muted/80"
-                variant="ghost"
-                onClick={() => paymentMethodDialog && handlePayWithMobileWallet(paymentMethodDialog)}
-                disabled={paymentProcessing || !paymentAmount || parseFloat(paymentAmount) <= 0 || 
-                  !paymentMethodDialog?.pentester?.payout_method || 
-                  (paymentMethodDialog?.pentester?.payout_method !== 'mpesa' && paymentMethodDialog?.pentester?.payout_method !== 'emola')}
-              >
-                <Smartphone className="h-5 w-5 text-secondary" />
-                <div className="text-left">
-                  <p className="font-medium text-foreground">Carteira Móvel (M-Pesa / E-Mola)</p>
-                  <p className="text-xs text-muted-foreground">
-                    {paymentMethodDialog?.pentester?.payout_method === 'mpesa' || paymentMethodDialog?.pentester?.payout_method === 'emola'
-                      ? `Transferência direta via ${paymentMethodDialog.pentester.payout_method.toUpperCase()}`
-                      : 'Pentester não configurou M-Pesa ou E-Mola'}
-                  </p>
+              <div className="p-4 border border-border rounded-lg space-y-3">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-5 w-5 text-secondary" />
+                  <p className="font-medium text-foreground">Carteira Móvel</p>
                 </div>
-              </Button>
+                
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={mobileWalletType === 'mpesa' ? 'default' : 'outline'}
+                    onClick={() => setMobileWalletType('mpesa')}
+                    className={mobileWalletType === 'mpesa' ? 'bg-secondary text-secondary-foreground' : ''}
+                  >
+                    M-Pesa
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={mobileWalletType === 'emola' ? 'default' : 'outline'}
+                    onClick={() => setMobileWalletType('emola')}
+                    className={mobileWalletType === 'emola' ? 'bg-secondary text-secondary-foreground' : ''}
+                  >
+                    E-Mola
+                  </Button>
+                </div>
+                
+                <div>
+                  <label className="text-xs text-muted-foreground">Número de telefone</label>
+                  <Input
+                    type="tel"
+                    placeholder="84/85/86/87 XXX XXXX"
+                    value={mobileWalletNumber}
+                    onChange={(e) => setMobileWalletNumber(e.target.value.replace(/\D/g, ''))}
+                    className="mt-1 bg-input border-border"
+                    maxLength={12}
+                  />
+                </div>
+                
+                <Button 
+                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                  onClick={() => paymentMethodDialog && handlePayWithMobileWallet(paymentMethodDialog)}
+                  disabled={paymentProcessing || !paymentAmount || parseFloat(paymentAmount) <= 0 || !mobileWalletNumber || mobileWalletNumber.length < 9}
+                >
+                  {paymentProcessing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Smartphone className="h-4 w-4 mr-2" />
+                  )}
+                  Pagar via {mobileWalletType.toUpperCase()}
+                </Button>
+              </div>
             </div>
           </div>
           
