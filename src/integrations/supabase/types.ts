@@ -68,6 +68,10 @@ export type Database = {
           id: string
           net_amount: number
           pentester_id: string
+          pentester_paid: boolean
+          pentester_paid_at: string | null
+          pentester_payment_notes: string | null
+          pentester_payment_reference: string | null
           platform_fee: number
           report_id: string
           status: string
@@ -82,6 +86,10 @@ export type Database = {
           id?: string
           net_amount: number
           pentester_id: string
+          pentester_paid?: boolean
+          pentester_paid_at?: string | null
+          pentester_payment_notes?: string | null
+          pentester_payment_reference?: string | null
           platform_fee: number
           report_id: string
           status?: string
@@ -96,6 +104,10 @@ export type Database = {
           id?: string
           net_amount?: number
           pentester_id?: string
+          pentester_paid?: boolean
+          pentester_paid_at?: string | null
+          pentester_payment_notes?: string | null
+          pentester_payment_reference?: string | null
           platform_fee?: number
           report_id?: string
           status?: string

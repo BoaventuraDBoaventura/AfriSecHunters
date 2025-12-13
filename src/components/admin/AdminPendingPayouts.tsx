@@ -1,0 +1,510 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { CyberCard } from '@/components/ui/CyberCard';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Clock, 
+  CheckCircle2, 
+  DollarSign, 
+  Download, 
+  User,
+  Building2,
+  CreditCard,
+  Phone,
+  Mail,
+  ExternalLink
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { exportToCsv } from '@/lib/exportCsv';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
+interface PendingPayout {
+  id: string;
+  report_id: string;
+  pentester_id: string;
+  net_amount: number;
+  created_at: string;
+  pentester_paid: boolean;
+  pentester?: {
+    display_name: string | null;
+    payout_method: string | null;
+    payout_details: {
+      bank_name?: string;
+      account_number?: string;
+      nib?: string;
+      phone_number?: string;
+      paypal_email?: string;
+    } | null;
+  };
+  report?: {
+    title: string;
+  };
+}
+
+interface AdminPendingPayoutsProps {
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsProps) {
+  const [pendingPayouts, setPendingPayouts] = useState<PendingPayout[]>([]);
+  const [completedPayouts, setCompletedPayouts] = useState<PendingPayout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPayout, setSelectedPayout] = useState<PendingPayout | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchPayouts();
+  }, [dateFrom, dateTo]);
+
+  const fetchPayouts = async () => {
+    setLoading(true);
+    
+    // Fetch pending payouts
+    let pendingQuery = supabase
+      .from('platform_transactions')
+      .select(`
+        id,
+        report_id,
+        pentester_id,
+        net_amount,
+        created_at,
+        pentester_paid,
+        pentester:profiles!platform_transactions_pentester_id_fkey (
+          display_name,
+          payout_method,
+          payout_details
+        ),
+        report:reports!platform_transactions_report_id_fkey (
+          title
+        )
+      `)
+      .eq('pentester_paid', false)
+      .order('created_at', { ascending: false });
+
+    // Fetch completed payouts
+    let completedQuery = supabase
+      .from('platform_transactions')
+      .select(`
+        id,
+        report_id,
+        pentester_id,
+        net_amount,
+        created_at,
+        pentester_paid,
+        pentester_paid_at,
+        pentester_payment_reference,
+        pentester:profiles!platform_transactions_pentester_id_fkey (
+          display_name,
+          payout_method,
+          payout_details
+        ),
+        report:reports!platform_transactions_report_id_fkey (
+          title
+        )
+      `)
+      .eq('pentester_paid', true)
+      .order('pentester_paid_at', { ascending: false })
+      .limit(20);
+
+    if (dateFrom) {
+      pendingQuery = pendingQuery.gte('created_at', dateFrom.toISOString());
+      completedQuery = completedQuery.gte('created_at', dateFrom.toISOString());
+    }
+    if (dateTo) {
+      const endOfDay = new Date(dateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      pendingQuery = pendingQuery.lte('created_at', endOfDay.toISOString());
+      completedQuery = completedQuery.lte('created_at', endOfDay.toISOString());
+    }
+
+    const [pendingResult, completedResult] = await Promise.all([
+      pendingQuery,
+      completedQuery
+    ]);
+
+    if (!pendingResult.error && pendingResult.data) {
+      setPendingPayouts(pendingResult.data as unknown as PendingPayout[]);
+    }
+    if (!completedResult.error && completedResult.data) {
+      setCompletedPayouts(completedResult.data as unknown as PendingPayout[]);
+    }
+    
+    setLoading(false);
+  };
+
+  const handleMarkAsPaid = (payout: PendingPayout) => {
+    setSelectedPayout(payout);
+    setPaymentReference('');
+    setPaymentNotes('');
+    setIsDialogOpen(true);
+  };
+
+  const confirmPayment = async () => {
+    if (!selectedPayout) return;
+    
+    setIsProcessing(true);
+    
+    const { error } = await supabase
+      .from('platform_transactions')
+      .update({
+        pentester_paid: true,
+        pentester_paid_at: new Date().toISOString(),
+        pentester_payment_reference: paymentReference || null,
+        pentester_payment_notes: paymentNotes || null,
+      })
+      .eq('id', selectedPayout.id);
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível marcar como pago.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Pagamento Confirmado!',
+        description: `Transferência para ${selectedPayout.pentester?.display_name || 'Hunter'} registrada.`,
+      });
+      fetchPayouts();
+    }
+    
+    setIsProcessing(false);
+    setIsDialogOpen(false);
+    setSelectedPayout(null);
+  };
+
+  const totalPending = pendingPayouts.reduce((sum, p) => sum + Number(p.net_amount), 0);
+  const totalCompleted = completedPayouts.reduce((sum, p) => sum + Number(p.net_amount), 0);
+
+  const getPayoutMethodLabel = (method: string | null) => {
+    switch (method) {
+      case 'bank_transfer': return 'Transferência Bancária';
+      case 'mpesa': return 'M-Pesa';
+      case 'paypal': return 'PayPal';
+      default: return 'Não configurado';
+    }
+  };
+
+  const getPayoutMethodIcon = (method: string | null) => {
+    switch (method) {
+      case 'bank_transfer': return <Building2 className="h-4 w-4" />;
+      case 'mpesa': return <Phone className="h-4 w-4" />;
+      case 'paypal': return <Mail className="h-4 w-4" />;
+      default: return <CreditCard className="h-4 w-4" />;
+    }
+  };
+
+  const renderPayoutDetails = (payout: PendingPayout) => {
+    const details = payout.pentester?.payout_details;
+    const method = payout.pentester?.payout_method;
+    
+    if (!details || !method) {
+      return <span className="text-destructive text-xs">Dados não configurados</span>;
+    }
+
+    switch (method) {
+      case 'bank_transfer':
+        return (
+          <div className="text-xs space-y-0.5">
+            <div><span className="text-muted-foreground">Banco:</span> {details.bank_name || '-'}</div>
+            <div><span className="text-muted-foreground">Conta:</span> {details.account_number || '-'}</div>
+            <div><span className="text-muted-foreground">NIB:</span> {details.nib || '-'}</div>
+          </div>
+        );
+      case 'mpesa':
+        return (
+          <div className="text-xs">
+            <span className="text-muted-foreground">Telefone:</span> {details.phone_number || '-'}
+          </div>
+        );
+      case 'paypal':
+        return (
+          <div className="text-xs">
+            <span className="text-muted-foreground">Email:</span> {details.paypal_email || '-'}
+          </div>
+        );
+      default:
+        return <span className="text-destructive text-xs">Método desconhecido</span>;
+    }
+  };
+
+  const handleExport = () => {
+    const exportData = pendingPayouts.map(p => ({
+      hunter: p.pentester?.display_name || 'N/A',
+      valor: p.net_amount,
+      metodo: getPayoutMethodLabel(p.pentester?.payout_method || null),
+      banco: p.pentester?.payout_details?.bank_name || '',
+      conta: p.pentester?.payout_details?.account_number || '',
+      nib: p.pentester?.payout_details?.nib || '',
+      telefone: p.pentester?.payout_details?.phone_number || '',
+      paypal: p.pentester?.payout_details?.paypal_email || '',
+      data: format(new Date(p.created_at), 'dd/MM/yyyy'),
+      report: p.report?.title || p.report_id,
+    }));
+
+    exportToCsv(exportData, 'pagamentos_pendentes', [
+      { key: 'hunter', label: 'Hunter' },
+      { key: 'valor', label: 'Valor (MZN)' },
+      { key: 'metodo', label: 'Método' },
+      { key: 'banco', label: 'Banco' },
+      { key: 'conta', label: 'Conta' },
+      { key: 'nib', label: 'NIB' },
+      { key: 'telefone', label: 'Telefone (M-Pesa)' },
+      { key: 'paypal', label: 'PayPal Email' },
+      { key: 'data', label: 'Data Pagamento Stripe' },
+      { key: 'report', label: 'Report' },
+    ]);
+    toast({ title: 'Exportado!', description: 'Lista de pagamentos pendentes baixada.' });
+  };
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-24 bg-muted rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <CyberCard glow className="text-center">
+          <Clock className="h-6 w-6 text-warning mx-auto mb-2" />
+          <div className="text-2xl font-bold font-mono text-warning">
+            {pendingPayouts.length}
+          </div>
+          <div className="text-sm text-muted-foreground">Pagamentos Pendentes</div>
+        </CyberCard>
+
+        <CyberCard className="text-center">
+          <DollarSign className="h-6 w-6 text-destructive mx-auto mb-2" />
+          <div className="text-2xl font-bold font-mono text-destructive">
+            MZN {totalPending.toLocaleString()}
+          </div>
+          <div className="text-sm text-muted-foreground">Total a Pagar</div>
+        </CyberCard>
+
+        <CyberCard className="text-center">
+          <CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-2" />
+          <div className="text-2xl font-bold font-mono text-primary">
+            MZN {totalCompleted.toLocaleString()}
+          </div>
+          <div className="text-sm text-muted-foreground">Já Transferido</div>
+        </CyberCard>
+      </div>
+
+      {/* Pending Payouts Table */}
+      <CyberCard>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Clock className="h-5 w-5 text-warning" />
+            Pagamentos Pendentes aos Hunters
+          </h3>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.open('https://dashboard.stripe.com/balance', '_blank')}
+              className="border-secondary text-secondary hover:bg-secondary/10"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Stripe Dashboard
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleExport} 
+              className="border-primary text-primary hover:bg-primary/10"
+              disabled={pendingPayouts.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
+          </div>
+        </div>
+
+        {pendingPayouts.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-primary/50" />
+            Nenhum pagamento pendente! Todos os hunters foram pagos.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase">
+                  <th className="py-3 px-4">Hunter</th>
+                  <th className="py-3 px-4">Report</th>
+                  <th className="py-3 px-4">Valor</th>
+                  <th className="py-3 px-4">Método</th>
+                  <th className="py-3 px-4">Dados de Pagamento</th>
+                  <th className="py-3 px-4">Data Stripe</th>
+                  <th className="py-3 px-4">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingPayouts.map(payout => (
+                  <tr key={payout.id} className="border-b border-border/50 hover:bg-warning/5">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {payout.pentester?.display_name || 'Hunter'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-muted-foreground max-w-48 truncate">
+                      {payout.report?.title || payout.report_id.slice(0, 8) + '...'}
+                    </td>
+                    <td className="py-3 px-4 font-mono font-bold text-primary">
+                      MZN {Number(payout.net_amount).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1.5">
+                        {getPayoutMethodIcon(payout.pentester?.payout_method || null)}
+                        <span className="text-sm">
+                          {getPayoutMethodLabel(payout.pentester?.payout_method || null)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      {renderPayoutDetails(payout)}
+                    </td>
+                    <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
+                      {format(new Date(payout.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                    </td>
+                    <td className="py-3 px-4">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleMarkAsPaid(payout)}
+                        className="bg-primary hover:bg-primary/80"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Transferido
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CyberCard>
+
+      {/* Recent Completed Payouts */}
+      {completedPayouts.length > 0 && (
+        <CyberCard>
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            Transferências Recentes
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase">
+                  <th className="py-3 px-4">Hunter</th>
+                  <th className="py-3 px-4">Valor</th>
+                  <th className="py-3 px-4">Referência</th>
+                  <th className="py-3 px-4">Data Transferência</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedPayouts.map((payout: any) => (
+                  <tr key={payout.id} className="border-b border-border/50 hover:bg-primary/5">
+                    <td className="py-3 px-4 font-medium">
+                      {payout.pentester?.display_name || 'Hunter'}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-primary">
+                      MZN {Number(payout.net_amount).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-muted-foreground font-mono">
+                      {payout.pentester_payment_reference || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
+                      {payout.pentester_paid_at 
+                        ? format(new Date(payout.pentester_paid_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                        : '-'
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CyberCard>
+      )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Transferência</DialogTitle>
+            <DialogDescription>
+              Confirme que a transferência foi realizada para{' '}
+              <span className="font-semibold text-foreground">
+                {selectedPayout?.pentester?.display_name || 'o hunter'}
+              </span>
+              {' '}no valor de{' '}
+              <span className="font-mono font-bold text-primary">
+                MZN {Number(selectedPayout?.net_amount || 0).toLocaleString()}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reference">Referência da Transferência</Label>
+              <Input
+                id="reference"
+                placeholder="Ex: TRF-123456 ou ID do comprovativo"
+                value={paymentReference}
+                onChange={(e) => setPaymentReference(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notas (opcional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Observações sobre a transferência..."
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmPayment} disabled={isProcessing}>
+              {isProcessing ? 'Processando...' : 'Confirmar Pagamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
