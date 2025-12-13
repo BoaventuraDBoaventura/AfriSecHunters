@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Programs from "./pages/Programs";
@@ -27,21 +28,23 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/programs" element={<Programs />} />
-            <Route path="/programs/create" element={<CreateProgram />} />
-            <Route path="/programs/:id" element={<ProgramDetail />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/company-dashboard" element={<CompanyDashboard />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/hunters/:id" element={<PublicProfile />} />
-            <Route path="/submit-report/:programId" element={<SubmitReport />} />
-            <Route path="/reports/:id" element={<ReportDetail />} />
-            <Route path="/profile" element={<EditProfile />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <NotificationProvider>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/programs" element={<Programs />} />
+              <Route path="/programs/create" element={<CreateProgram />} />
+              <Route path="/programs/:id" element={<ProgramDetail />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/company-dashboard" element={<CompanyDashboard />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/hunters/:id" element={<PublicProfile />} />
+              <Route path="/submit-report/:programId" element={<SubmitReport />} />
+              <Route path="/reports/:id" element={<ReportDetail />} />
+              <Route path="/profile" element={<EditProfile />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </NotificationProvider>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
