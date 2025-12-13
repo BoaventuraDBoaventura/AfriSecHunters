@@ -15,7 +15,7 @@ export type VulnerabilityType =
   | 'dos'
   | 'other';
 
-export type PayoutMethod = 'bank_transfer' | 'mpesa' | 'paypal';
+export type PayoutMethod = 'bank_transfer' | 'mpesa' | 'emola' | 'paypal';
 
 export interface PayoutDetails {
   [key: string]: string | undefined;

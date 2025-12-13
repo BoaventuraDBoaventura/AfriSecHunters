@@ -14,7 +14,10 @@ import {
   CreditCard,
   Phone,
   Mail,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -37,6 +40,10 @@ interface PendingPayout {
   net_amount: number;
   created_at: string;
   pentester_paid: boolean;
+  payout_type?: string;
+  gibrapay_status?: string;
+  gibrapay_pentester_tx_id?: string;
+  gibrapay_error?: string;
   pentester?: {
     display_name: string | null;
     payout_method: string | null;
@@ -86,6 +93,10 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
         net_amount,
         created_at,
         pentester_paid,
+        payout_type,
+        gibrapay_status,
+        gibrapay_pentester_tx_id,
+        gibrapay_error,
         pentester:profiles!platform_transactions_pentester_id_fkey (
           display_name,
           payout_method,
@@ -110,6 +121,8 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
         pentester_paid,
         pentester_paid_at,
         pentester_payment_reference,
+        payout_type,
+        gibrapay_pentester_tx_id,
         pentester:profiles!platform_transactions_pentester_id_fkey (
           display_name,
           payout_method,
@@ -197,6 +210,7 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
     switch (method) {
       case 'bank_transfer': return 'Transferência Bancária';
       case 'mpesa': return 'M-Pesa';
+      case 'emola': return 'E-Mola';
       case 'paypal': return 'PayPal';
       default: return 'Não configurado';
     }
@@ -206,9 +220,74 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
     switch (method) {
       case 'bank_transfer': return <Building2 className="h-4 w-4" />;
       case 'mpesa': return <Phone className="h-4 w-4" />;
+      case 'emola': return <Phone className="h-4 w-4" />;
       case 'paypal': return <Mail className="h-4 w-4" />;
       default: return <CreditCard className="h-4 w-4" />;
     }
+  };
+
+  const getPayoutTypeLabel = (payout: PendingPayout) => {
+    const type = payout.payout_type;
+    const status = payout.gibrapay_status;
+    
+    if (type === 'automatic_mpesa' || type === 'automatic_emola') {
+      if (status === 'complete') {
+        return (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+            <Zap className="h-3 w-3" />
+            Automático
+          </span>
+        );
+      } else if (status === 'failed') {
+        return (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/20 text-destructive">
+            <AlertCircle className="h-3 w-3" />
+            Falhou
+          </span>
+        );
+      } else {
+        return (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warning/20 text-warning">
+            <RefreshCw className="h-3 w-3" />
+            Processando
+          </span>
+        );
+      }
+    }
+    
+    return (
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+        Manual
+      </span>
+    );
+  };
+
+  const handleRetryGibrapay = async (payout: PendingPayout) => {
+    setIsProcessing(true);
+    
+    try {
+      const { error } = await supabase.functions.invoke('process-gibrapay-payout', {
+        body: { reportId: payout.report_id, transactionId: payout.id }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Processando...',
+        description: 'Tentando novamente transferência automática.',
+      });
+      
+      // Wait a bit then refresh
+      setTimeout(() => fetchPayouts(), 2000);
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível reprocessar.',
+        variant: 'destructive',
+      });
+    }
+    
+    setIsProcessing(false);
   };
 
   const renderPayoutDetails = (payout: PendingPayout) => {
@@ -229,9 +308,20 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
           </div>
         );
       case 'mpesa':
+      case 'emola':
         return (
           <div className="text-xs">
             <span className="text-muted-foreground">Telefone:</span> {details.phone_number || '-'}
+            {payout.gibrapay_pentester_tx_id && (
+              <div className="text-primary/70 mt-0.5">
+                TX: {payout.gibrapay_pentester_tx_id}
+              </div>
+            )}
+            {payout.gibrapay_error && (
+              <div className="text-destructive mt-0.5">
+                Erro: {payout.gibrapay_error}
+              </div>
+            )}
           </div>
         );
       case 'paypal':
@@ -359,6 +449,7 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
                   <th className="py-3 px-4">Report</th>
                   <th className="py-3 px-4">Valor</th>
                   <th className="py-3 px-4">Método</th>
+                  <th className="py-3 px-4">Tipo</th>
                   <th className="py-3 px-4">Dados de Pagamento</th>
                   <th className="py-3 px-4">Data Stripe</th>
                   <th className="py-3 px-4">Ação</th>
@@ -390,20 +481,36 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
                       </div>
                     </td>
                     <td className="py-3 px-4">
+                      {getPayoutTypeLabel(payout)}
+                    </td>
+                    <td className="py-3 px-4">
                       {renderPayoutDetails(payout)}
                     </td>
                     <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
                       {format(new Date(payout.created_at), "dd/MM/yyyy", { locale: ptBR })}
                     </td>
                     <td className="py-3 px-4">
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleMarkAsPaid(payout)}
-                        className="bg-primary hover:bg-primary/80"
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Transferido
-                      </Button>
+                      <div className="flex gap-1">
+                        {payout.gibrapay_status === 'failed' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleRetryGibrapay(payout)}
+                            disabled={isProcessing}
+                            className="border-warning text-warning hover:bg-warning/10"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleMarkAsPaid(payout)}
+                          className="bg-primary hover:bg-primary/80"
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Transferido
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

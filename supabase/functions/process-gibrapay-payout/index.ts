@@ -1,0 +1,242 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const logStep = (step: string, details?: Record<string, unknown>) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[GIBRAPAY-PAYOUT] ${step}${detailsStr}`);
+};
+
+interface GibrapayTransferResponse {
+  success: boolean;
+  message?: string;
+  transaction_id?: string;
+  error?: string;
+}
+
+async function makeGibrapayTransfer(
+  apiKey: string,
+  walletId: string,
+  phoneNumber: string,
+  amount: number,
+  reference: string
+): Promise<GibrapayTransferResponse> {
+  logStep("Making GibaPay transfer", { phoneNumber: phoneNumber.slice(-4), amount, reference });
+  
+  try {
+    const response = await fetch("https://gibrapay.online/api/v1/transfer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "API-Key": apiKey,
+      },
+      body: JSON.stringify({
+        wallet_id: walletId,
+        to: phoneNumber,
+        amount: amount.toString(),
+        reference: reference,
+      }),
+    });
+
+    const data = await response.json();
+    logStep("GibaPay response", { status: response.status, data });
+
+    if (response.ok && data.success) {
+      return {
+        success: true,
+        transaction_id: data.transaction_id || data.id,
+        message: data.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: data.message || data.error || "Transfer failed",
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logStep("GibaPay transfer error", { error: errorMsg });
+    return {
+      success: false,
+      error: errorMsg || "Network error",
+    };
+  }
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    logStep("Function started");
+
+    const gibrapayApiKey = Deno.env.get("GIBRAPAY_API_KEY");
+    const gibrapayWalletId = Deno.env.get("GIBRAPAY_WALLET_ID");
+    const platformMpesaNumber = Deno.env.get("PLATFORM_MPESA_NUMBER");
+
+    if (!gibrapayApiKey || !gibrapayWalletId) {
+      throw new Error("GibaPay credentials not configured");
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const { reportId, transactionId } = await req.json();
+    logStep("Processing payout", { reportId, transactionId });
+
+    if (!reportId) {
+      throw new Error("Report ID is required");
+    }
+
+    // Fetch report with pentester info
+    const { data: report, error: reportError } = await supabaseClient
+      .from("reports")
+      .select(`
+        *,
+        pentester:profiles!reports_pentester_id_fkey(
+          id, display_name, payout_method, payout_details
+        )
+      `)
+      .eq("id", reportId)
+      .maybeSingle();
+
+    if (reportError || !report) {
+      throw new Error(`Report not found: ${reportError?.message || "No data"}`);
+    }
+
+    logStep("Report found", { 
+      pentesterId: report.pentester_id,
+      rewardAmount: report.reward_amount,
+      payoutMethod: report.pentester?.payout_method
+    });
+
+    const pentester = report.pentester;
+    const payoutMethod = pentester?.payout_method;
+    const payoutDetails = pentester?.payout_details;
+
+    // Check if payout method is M-Pesa or E-Mola
+    if (payoutMethod !== "mpesa" && payoutMethod !== "emola") {
+      logStep("Payout method not automatic", { payoutMethod });
+      
+      // Update transaction to manual payout
+      if (transactionId) {
+        await supabaseClient
+          .from("platform_transactions")
+          .update({ payout_type: "manual" })
+          .eq("id", transactionId);
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        automatic: false,
+        message: "Payout method requires manual transfer" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get phone number from payout details
+    const phoneNumber = payoutDetails?.phone_number;
+    if (!phoneNumber) {
+      throw new Error("Pentester phone number not configured");
+    }
+
+    const grossAmount = report.reward_amount || 0;
+    const platformFee = Math.round(grossAmount * 0.10 * 100) / 100; // 10% commission
+    const netAmount = Math.round((grossAmount - platformFee) * 100) / 100;
+
+    logStep("Calculated amounts", { grossAmount, platformFee, netAmount });
+
+    // Transfer to pentester
+    const pentesterReference = `REP-${reportId.slice(0, 8)}-PENT`;
+    const pentesterTransfer = await makeGibrapayTransfer(
+      gibrapayApiKey,
+      gibrapayWalletId,
+      phoneNumber,
+      netAmount,
+      pentesterReference
+    );
+
+    let platformTransfer: GibrapayTransferResponse = { success: true };
+    
+    // Transfer platform fee if configured
+    if (platformMpesaNumber && platformFee > 0) {
+      const platformReference = `REP-${reportId.slice(0, 8)}-PLAT`;
+      platformTransfer = await makeGibrapayTransfer(
+        gibrapayApiKey,
+        gibrapayWalletId,
+        platformMpesaNumber,
+        platformFee,
+        platformReference
+      );
+    }
+
+    // Determine overall status
+    const overallSuccess = pentesterTransfer.success;
+    const gibrapayStatus = overallSuccess ? "complete" : "failed";
+    const payoutType = payoutMethod === "emola" ? "automatic_emola" : "automatic_mpesa";
+
+    // Update transaction record
+    const updateData: Record<string, unknown> = {
+      gibrapay_pentester_tx_id: pentesterTransfer.transaction_id || null,
+      gibrapay_platform_tx_id: platformTransfer.transaction_id || null,
+      gibrapay_status: gibrapayStatus,
+      gibrapay_error: pentesterTransfer.error || platformTransfer.error || null,
+      payout_type: payoutType,
+    };
+
+    if (overallSuccess) {
+      updateData.pentester_paid = true;
+      updateData.pentester_paid_at = new Date().toISOString();
+      updateData.pentester_payment_reference = pentesterTransfer.transaction_id;
+    }
+
+    if (transactionId) {
+      await supabaseClient
+        .from("platform_transactions")
+        .update(updateData)
+        .eq("id", transactionId);
+    } else {
+      // Find and update by report_id
+      await supabaseClient
+        .from("platform_transactions")
+        .update(updateData)
+        .eq("report_id", reportId);
+    }
+
+    logStep("Payout complete", { 
+      success: overallSuccess,
+      pentesterTxId: pentesterTransfer.transaction_id,
+      platformTxId: platformTransfer.transaction_id
+    });
+
+    return new Response(JSON.stringify({
+      success: overallSuccess,
+      automatic: true,
+      pentester_transaction_id: pentesterTransfer.transaction_id,
+      platform_transaction_id: platformTransfer.transaction_id,
+      error: pentesterTransfer.error || platformTransfer.error,
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logStep("ERROR", { message: errorMsg });
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: errorMsg 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+});
