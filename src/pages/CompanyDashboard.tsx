@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout/Layout';
 import { CyberCard } from '@/components/ui/CyberCard';
@@ -21,7 +21,9 @@ import {
   Eye,
   TrendingUp,
   Shield,
-  Users
+  Users,
+  CreditCard,
+  Loader2
 } from 'lucide-react';
 import {
   Dialog,
@@ -43,15 +45,17 @@ export default function CompanyDashboard() {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [programs, setPrograms] = useState<Program[]>([]);
   const [reports, setReports] = useState<ReportWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportWithDetails | null>(null);
-  const [actionDialog, setActionDialog] = useState<{ type: 'accept' | 'reject' | 'view'; report: ReportWithDetails } | null>(null);
+  const [actionDialog, setActionDialog] = useState<{ type: 'accept' | 'reject' | 'view' | 'pay'; report: ReportWithDetails } | null>(null);
   const [rewardAmount, setRewardAmount] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -64,6 +68,42 @@ export default function CompanyDashboard() {
       fetchData();
     }
   }, [user, profile]);
+
+  // Handle payment callback from Stripe
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    const reportId = searchParams.get('report');
+    
+    if (paymentStatus === 'success' && reportId) {
+      verifyPayment(reportId);
+      // Clear the URL params
+      setSearchParams({});
+    } else if (paymentStatus === 'cancelled') {
+      toast({ title: 'Pagamento cancelado', description: 'O pagamento foi cancelado.' });
+      setSearchParams({});
+    }
+  }, [searchParams]);
+
+  const verifyPayment = async (reportId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { reportId }
+      });
+
+      if (error) throw error;
+
+      if (data.paid) {
+        toast({ 
+          title: 'Pagamento confirmado!', 
+          description: `Recompensa de MZN ${data.rewardAmount?.toLocaleString()} processada com sucesso.` 
+        });
+        fetchData();
+      }
+    } catch (error: any) {
+      console.error('Error verifying payment:', error);
+      toast({ title: 'Erro', description: 'Erro ao verificar pagamento.', variant: 'destructive' });
+    }
+  };
 
   const fetchData = async () => {
     // Fetch programs
@@ -140,17 +180,32 @@ export default function CompanyDashboard() {
     setRejectionReason('');
   };
 
-  const handleMarkAsPaid = async (reportId: string) => {
-    const { error } = await supabase
-      .from('reports')
-      .update({ status: 'paid' as ReportStatus })
-      .eq('id', reportId);
+  const handlePayWithStripe = async (report: ReportWithDetails) => {
+    if (!report.reward_amount) {
+      toast({ title: 'Erro', description: 'Defina o valor da recompensa primeiro.', variant: 'destructive' });
+      return;
+    }
 
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Pagamento registrado!' });
-      fetchData();
+    setPaymentProcessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-reward-payment', {
+        body: { 
+          reportId: report.id, 
+          rewardAmount: report.reward_amount 
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.url) {
+        // Open Stripe checkout in a new tab
+        window.open(data.url, '_blank');
+      }
+    } catch (error: any) {
+      console.error('Error creating payment:', error);
+      toast({ title: 'Erro', description: error.message || 'Erro ao criar pagamento.', variant: 'destructive' });
+    } finally {
+      setPaymentProcessing(false);
     }
   };
 
@@ -353,10 +408,15 @@ export default function CompanyDashboard() {
                             <Button 
                               size="sm"
                               className="bg-primary text-primary-foreground hover:bg-primary/90"
-                              onClick={() => handleMarkAsPaid(report.id)}
+                              onClick={() => handlePayWithStripe(report)}
+                              disabled={paymentProcessing}
                             >
-                              <DollarSign className="h-4 w-4 mr-1" />
-                              Marcar como Pago
+                              {paymentProcessing ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <CreditCard className="h-4 w-4 mr-1" />
+                              )}
+                              Pagar via Stripe
                             </Button>
                           )}
                         </div>
@@ -502,7 +562,7 @@ export default function CompanyDashboard() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground">Valor da Recompensa (R$)</label>
+              <label className="text-sm font-medium text-foreground">Valor da Recompensa (MZN)</label>
               <Input
                 type="number"
                 placeholder="1000"
@@ -511,12 +571,15 @@ export default function CompanyDashboard() {
                 className="mt-1 bg-input border-border"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Sugerido para {actionDialog?.report?.severity}: R$ {
-                  actionDialog?.report?.severity === 'critical' ? actionDialog?.report?.program?.reward_critical :
-                  actionDialog?.report?.severity === 'high' ? actionDialog?.report?.program?.reward_high :
-                  actionDialog?.report?.severity === 'medium' ? actionDialog?.report?.program?.reward_medium :
-                  actionDialog?.report?.program?.reward_low
+                Sugerido para {actionDialog?.report?.severity}: MZN {
+                  actionDialog?.report?.severity === 'critical' ? actionDialog?.report?.program?.reward_critical?.toLocaleString() :
+                  actionDialog?.report?.severity === 'high' ? actionDialog?.report?.program?.reward_high?.toLocaleString() :
+                  actionDialog?.report?.severity === 'medium' ? actionDialog?.report?.program?.reward_medium?.toLocaleString() :
+                  actionDialog?.report?.program?.reward_low?.toLocaleString()
                 }
+              </p>
+              <p className="text-xs text-primary mt-2">
+                💳 Taxa de plataforma: 10% será adicionada ao checkout
               </p>
             </div>
           </div>

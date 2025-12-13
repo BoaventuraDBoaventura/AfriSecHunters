@@ -141,7 +141,7 @@ export default function ReportDetail() {
                 {report.reward_amount && (
                   <div className="flex items-center gap-1 text-primary">
                     <DollarSign className="h-4 w-4" />
-                    R$ {report.reward_amount.toLocaleString('pt-BR')}
+                    MZN {report.reward_amount.toLocaleString('pt-BR')}
                   </div>
                 )}
               </div>
