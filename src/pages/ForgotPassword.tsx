@@ -7,17 +7,58 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { Bug, Mail, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
+
+  const verifyTurnstile = async (token: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-turnstile', {
+        body: { token }
+      });
+      
+      if (error) {
+        console.error('Turnstile verification error:', error);
+        return false;
+      }
+      
+      return data?.success === true;
+    } catch (err) {
+      console.error('Error calling verify-turnstile:', err);
+      return false;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Verify Turnstile token if configured
+    if (TURNSTILE_SITE_KEY) {
+      if (!turnstileToken) {
+        setError('Por favor, complete a verificação de segurança');
+        setLoading(false);
+        return;
+      }
+
+      const isValid = await verifyTurnstile(turnstileToken);
+      if (!isValid) {
+        setError('Verificação de segurança falhou. Tente novamente.');
+        setTurnstileToken(null);
+        setTurnstileKey(prev => prev + 1);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -88,6 +129,22 @@ export default function ForgotPassword() {
                   </div>
                 </div>
 
+                {/* Turnstile Widget */}
+                {TURNSTILE_SITE_KEY && (
+                  <div className="flex justify-center">
+                    <Turnstile
+                      key={turnstileKey}
+                      siteKey={TURNSTILE_SITE_KEY}
+                      onSuccess={setTurnstileToken}
+                      onError={() => setTurnstileToken(null)}
+                      onExpire={() => setTurnstileToken(null)}
+                      options={{
+                        theme: 'dark',
+                      }}
+                    />
+                  </div>
+                )}
+
                 {error && (
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/50 text-destructive text-sm">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -98,7 +155,7 @@ export default function ForgotPassword() {
                 <Button
                   type="submit"
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  disabled={loading}
+                  disabled={loading || (TURNSTILE_SITE_KEY && !turnstileToken)}
                 >
                   {loading ? (
                     <div className="h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
