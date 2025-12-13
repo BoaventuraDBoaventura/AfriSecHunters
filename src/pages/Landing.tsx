@@ -238,10 +238,7 @@ export default function Landing() {
                   <div className="h-10 w-10 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center">
                     <DollarSign className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-lg text-foreground">Exemplo de Recompensas</h3>
-                    <p className="text-xs text-muted-foreground font-mono">// reward_tiers.config</p>
-                  </div>
+                  <h3 className="font-semibold text-lg text-foreground">Exemplo de Recompensas</h3>
                 </div>
                 
                 <div className="space-y-3">
