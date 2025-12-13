@@ -89,20 +89,23 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { reportId, transactionId } = await req.json();
-    logStep("Processing payout", { reportId, transactionId });
+    const { reportId, transactionId, directPayment } = await req.json();
+    logStep("Processing payout", { reportId, transactionId, directPayment });
 
     if (!reportId) {
       throw new Error("Report ID is required");
     }
 
-    // Fetch report with pentester info
+    // Fetch report with pentester and program info
     const { data: report, error: reportError } = await supabaseClient
       .from("reports")
       .select(`
         *,
         pentester:profiles!reports_pentester_id_fkey(
           id, display_name, payout_method, payout_details
+        ),
+        program:programs!reports_program_id_fkey(
+          company_id
         )
       `)
       .eq("id", reportId)
@@ -155,6 +158,32 @@ serve(async (req) => {
 
     logStep("Calculated amounts", { grossAmount, platformFee, netAmount });
 
+    // For direct payments (company paying via mobile wallet), create transaction record first
+    let existingTransactionId = transactionId;
+    if (directPayment && !transactionId) {
+      const { data: newTx, error: txError } = await supabaseClient
+        .from("platform_transactions")
+        .insert({
+          report_id: reportId,
+          company_id: report.program?.company_id,
+          pentester_id: report.pentester_id,
+          gross_amount: grossAmount,
+          platform_fee: platformFee,
+          net_amount: netAmount,
+          status: "completed",
+          payout_type: "pending",
+          gibrapay_status: "processing",
+        })
+        .select("id")
+        .single();
+
+      if (txError) {
+        logStep("Error creating transaction", { error: txError.message });
+      } else {
+        existingTransactionId = newTx.id;
+        logStep("Created transaction record", { transactionId: existingTransactionId });
+      }
+    }
     // Transfer to pentester
     const pentesterReference = `REP-${reportId.slice(0, 8)}-PENT`;
     const pentesterTransfer = await makeGibrapayTransfer(
@@ -199,17 +228,26 @@ serve(async (req) => {
       updateData.pentester_payment_reference = pentesterTransfer.transaction_id;
     }
 
-    if (transactionId) {
+    if (existingTransactionId) {
       await supabaseClient
         .from("platform_transactions")
         .update(updateData)
-        .eq("id", transactionId);
+        .eq("id", existingTransactionId);
     } else {
       // Find and update by report_id
       await supabaseClient
         .from("platform_transactions")
         .update(updateData)
         .eq("report_id", reportId);
+    }
+
+    // For direct payment, also update the report status to 'paid'
+    if (directPayment && overallSuccess) {
+      await supabaseClient
+        .from("reports")
+        .update({ status: "paid" })
+        .eq("id", reportId);
+      logStep("Report status updated to paid");
     }
 
     logStep("Payout complete", { 
