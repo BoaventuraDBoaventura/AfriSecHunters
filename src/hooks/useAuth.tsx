@@ -63,26 +63,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, displayName: string, role: 'pentester' | 'company') => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
           display_name: displayName,
+          role: role,
         },
       },
     });
 
-    if (!error) {
-      // Update the role after signup
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({ role, display_name: displayName })
-          .eq('id', user.id);
-      }
+    // Fetch profile after signup to ensure we have the correct role
+    if (!error && data.user) {
+      setTimeout(() => {
+        fetchProfile(data.user!.id);
+      }, 500);
     }
 
     return { error: error as Error | null };
