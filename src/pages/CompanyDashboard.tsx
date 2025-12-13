@@ -318,14 +318,15 @@ export default function CompanyDashboard() {
                           {new Date(report.created_at).toLocaleDateString('pt-BR')}
                         </span>
                         <div className="flex items-center gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => setActionDialog({ type: 'view', report })}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Ver
-                          </Button>
+                          <Link to={`/reports/${report.id}`}>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Ver
+                            </Button>
+                          </Link>
                           {report.status === 'pending' && (
                             <>
                               <Button 
