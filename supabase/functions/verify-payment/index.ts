@@ -94,7 +94,7 @@ serve(async (req) => {
     }
 
     // Record the transaction
-    const { error: transactionError } = await supabaseAdmin
+    const { data: transaction, error: transactionError } = await supabaseAdmin
       .from('platform_transactions')
       .insert({
         report_id: reportId,
@@ -107,16 +107,43 @@ serve(async (req) => {
         stripe_payment_intent: matchingSession.payment_intent as string,
         status: 'completed',
         completed_at: new Date().toISOString(),
-      });
+        payout_type: 'pending',
+      })
+      .select()
+      .single();
 
     if (transactionError) {
       logStep("Error recording transaction", { error: transactionError.message });
       // Don't throw - the payment was successful, just log the error
     } else {
-      logStep("Transaction recorded", { platformFee, netAmount });
+      logStep("Transaction recorded", { platformFee, netAmount, transactionId: transaction?.id });
     }
 
     logStep("Report updated to paid", { reportId, rewardAmount, platformFee, netAmount });
+
+    // Trigger automatic GibaPay payout
+    try {
+      const gibrapayResponse = await fetch(
+        `${supabaseUrl}/functions/v1/process-gibrapay-payout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ 
+            reportId, 
+            transactionId: transaction?.id 
+          }),
+        }
+      );
+      
+      const gibrapayResult = await gibrapayResponse.json();
+      logStep("GibaPay payout result", gibrapayResult);
+    } catch (gibrapayError) {
+      logStep("GibaPay payout failed", { error: gibrapayError instanceof Error ? gibrapayError.message : String(gibrapayError) });
+      // Don't throw - the Stripe payment was successful, payout can be retried later
+    }
 
     return new Response(JSON.stringify({ 
       paid: true, 

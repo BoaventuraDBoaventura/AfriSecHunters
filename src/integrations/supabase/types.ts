@@ -64,9 +64,15 @@ export type Database = {
           company_id: string
           completed_at: string | null
           created_at: string
+          gibrapay_error: string | null
+          gibrapay_pentester_tx_id: string | null
+          gibrapay_platform_tx_id: string | null
+          gibrapay_status: string | null
+          gibrapay_transaction_id: string | null
           gross_amount: number
           id: string
           net_amount: number
+          payout_type: string | null
           pentester_id: string
           pentester_paid: boolean
           pentester_paid_at: string | null
@@ -82,9 +88,15 @@ export type Database = {
           company_id: string
           completed_at?: string | null
           created_at?: string
+          gibrapay_error?: string | null
+          gibrapay_pentester_tx_id?: string | null
+          gibrapay_platform_tx_id?: string | null
+          gibrapay_status?: string | null
+          gibrapay_transaction_id?: string | null
           gross_amount: number
           id?: string
           net_amount: number
+          payout_type?: string | null
           pentester_id: string
           pentester_paid?: boolean
           pentester_paid_at?: string | null
@@ -100,9 +112,15 @@ export type Database = {
           company_id?: string
           completed_at?: string | null
           created_at?: string
+          gibrapay_error?: string | null
+          gibrapay_pentester_tx_id?: string | null
+          gibrapay_platform_tx_id?: string | null
+          gibrapay_status?: string | null
+          gibrapay_transaction_id?: string | null
           gross_amount?: number
           id?: string
           net_amount?: number
+          payout_type?: string | null
           pentester_id?: string
           pentester_paid?: boolean
           pentester_paid_at?: string | null
@@ -441,7 +459,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
-      payout_method: "bank_transfer" | "mpesa" | "paypal"
+      payout_method: "bank_transfer" | "mpesa" | "paypal" | "emola"
       report_status: "pending" | "in_review" | "accepted" | "rejected" | "paid"
       severity_level: "low" | "medium" | "high" | "critical"
       user_role: "pentester" | "company" | "admin"
@@ -586,7 +604,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
-      payout_method: ["bank_transfer", "mpesa", "paypal"],
+      payout_method: ["bank_transfer", "mpesa", "paypal", "emola"],
       report_status: ["pending", "in_review", "accepted", "rejected", "paid"],
       severity_level: ["low", "medium", "high", "critical"],
       user_role: ["pentester", "company", "admin"],
