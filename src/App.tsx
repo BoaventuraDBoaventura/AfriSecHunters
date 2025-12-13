@@ -17,6 +17,7 @@ import PublicProfile from "./pages/PublicProfile";
 import SubmitReport from "./pages/SubmitReport";
 import ReportDetail from "./pages/ReportDetail";
 import EditProfile from "./pages/EditProfile";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/submit-report/:programId" element={<SubmitReport />} />
               <Route path="/reports/:id" element={<ReportDetail />} />
               <Route path="/profile" element={<EditProfile />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </NotificationProvider>
