@@ -112,7 +112,7 @@ export default function CompanyDashboard() {
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Relatório aceito!', description: `Recompensa de R$ ${rewardAmount} definida.` });
+      toast({ title: 'Relatório aceito!', description: `Recompensa de MZN ${rewardAmount} definida.` });
       fetchData();
     }
     setProcessing(false);
@@ -254,7 +254,7 @@ export default function CompanyDashboard() {
                 <DollarSign className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <div className="text-2xl font-bold font-mono text-primary">R$ {totalPaid.toLocaleString()}</div>
+                <div className="text-2xl font-bold font-mono text-primary">MZN {totalPaid.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">Total Investido</div>
               </div>
             </div>
@@ -407,7 +407,7 @@ export default function CompanyDashboard() {
                           </div>
                           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                             <span>{programReports.length} relatórios</span>
-                            <span>R$ {program.reward_low} - R$ {program.reward_critical}</span>
+                            <span>MZN {program.reward_low?.toLocaleString()} - MZN {program.reward_critical?.toLocaleString()}</span>
                           </div>
                         </div>
                       </Link>

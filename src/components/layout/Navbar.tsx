@@ -32,7 +32,7 @@ export function Navbar() {
               <div className="absolute inset-0 blur-md bg-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <span className="text-xl font-bold text-primary text-glow-sm font-mono">
-              BugHunter
+              AfriSec Hunters
             </span>
           </Link>
 
