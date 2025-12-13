@@ -484,7 +484,7 @@ export default function CompanyDashboard() {
                               ) : (
                                 <CreditCard className="h-4 w-4 mr-1" />
                               )}
-                              Pagar Recompensa
+                              Pagar
                             </Button>
                           )}
                         </div>
