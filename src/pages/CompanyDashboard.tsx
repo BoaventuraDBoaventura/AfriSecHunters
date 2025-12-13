@@ -23,7 +23,8 @@ import {
   Shield,
   Users,
   CreditCard,
-  Loader2
+  Loader2,
+  Pencil
 } from 'lucide-react';
 import {
   Dialog,
@@ -457,20 +458,27 @@ export default function CompanyDashboard() {
                   {programs.map((program) => {
                     const programReports = reports.filter(r => r.program_id === program.id);
                     return (
-                      <Link key={program.id} to={`/programs/${program.id}`}>
-                        <div className="p-3 rounded-lg border border-border hover:border-secondary/50 transition-all">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-foreground truncate">{program.title}</span>
+                      <div key={program.id} className="p-3 rounded-lg border border-border hover:border-secondary/50 transition-all">
+                        <div className="flex items-center justify-between">
+                          <Link to={`/programs/${program.id}`} className="flex-1">
+                            <span className="font-medium text-foreground truncate hover:text-secondary transition-colors">{program.title}</span>
+                          </Link>
+                          <div className="flex items-center gap-2">
                             <span className={`text-xs px-2 py-0.5 rounded-full ${program.is_active ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'}`}>
                               {program.is_active ? 'Ativo' : 'Inativo'}
                             </span>
-                          </div>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                            <span>{programReports.length} relatórios</span>
-                            <span>MZN {program.reward_low?.toLocaleString()} - MZN {program.reward_critical?.toLocaleString()}</span>
+                            <Link to={`/programs/${program.id}/edit`}>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </Link>
                           </div>
                         </div>
-                      </Link>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                          <span>{programReports.length} relatórios</span>
+                          <span>MZN {program.reward_low?.toLocaleString()} - MZN {program.reward_critical?.toLocaleString()}</span>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
