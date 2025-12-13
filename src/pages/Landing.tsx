@@ -68,7 +68,7 @@ export default function Landing() {
         <div className="container mx-auto px-4 text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-primary/30 bg-primary/10 mb-6 sm:mb-8 animate-fade-in">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs sm:text-sm text-primary font-mono">Platform Online</span>
+            <span className="text-xs sm:text-sm text-primary font-mono">Plataforma Online</span>
           </div>
           
           <h1 className="text-3xl xs:text-4xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 animate-fade-in leading-tight">
