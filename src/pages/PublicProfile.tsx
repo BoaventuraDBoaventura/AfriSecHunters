@@ -60,28 +60,20 @@ export default function PublicProfile() {
     if (!error && profileData) {
       setProfile(profileData as Profile);
 
-      // Fetch report stats
-      const { data: reportsData } = await supabase
-        .from('reports')
-        .select('severity, status')
-        .eq('pentester_id', id);
+      // Fetch report stats usando função segura que bypassa RLS
+      const { data: statsData, error: statsError } = await supabase
+        .rpc('get_hunter_public_stats', { hunter_id: id });
 
-      if (reportsData) {
-        const severityCounts: Record<SeverityLevel, number> = {
-          low: 0,
-          medium: 0,
-          high: 0,
-          critical: 0,
+      if (!statsError && statsData) {
+        const data = statsData as { 
+          total_reports: number; 
+          accepted_reports: number; 
+          severity_counts: Record<SeverityLevel, number> 
         };
-        
-        reportsData.forEach(r => {
-          severityCounts[r.severity as SeverityLevel]++;
-        });
-
         setStats({
-          totalReports: reportsData.length,
-          acceptedReports: reportsData.filter(r => r.status === 'accepted' || r.status === 'paid').length,
-          severityCounts,
+          totalReports: data.total_reports,
+          acceptedReports: data.accepted_reports,
+          severityCounts: data.severity_counts,
         });
       }
     }
