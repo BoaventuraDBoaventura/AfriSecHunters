@@ -20,6 +20,7 @@ export default function Leaderboard() {
       .from('profiles')
       .select('*')
       .eq('role', 'pentester')
+      .gt('total_points', 0) // Only show hunters with activity
       .order('total_points', { ascending: false })
       .limit(50);
 
