@@ -14,6 +14,7 @@ import ProgramDetail from "./pages/ProgramDetail";
 import Dashboard from "./pages/Dashboard";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import CreateProgram from "./pages/CreateProgram";
+import EditProgram from "./pages/EditProgram";
 import Leaderboard from "./pages/Leaderboard";
 import PublicProfile from "./pages/PublicProfile";
 import SubmitReport from "./pages/SubmitReport";
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/programs" element={<Programs />} />
               <Route path="/programs/create" element={<CreateProgram />} />
               <Route path="/programs/:id" element={<ProgramDetail />} />
+              <Route path="/programs/:id/edit" element={<EditProgram />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/company-dashboard" element={<CompanyDashboard />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
