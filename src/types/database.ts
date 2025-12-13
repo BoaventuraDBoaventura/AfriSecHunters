@@ -60,6 +60,7 @@ export interface Program {
   reward_high: number;
   reward_critical: number;
   is_active: boolean;
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
   company?: Profile;

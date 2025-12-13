@@ -194,6 +194,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_archived: boolean
           out_of_scope: string[] | null
           reward_critical: number | null
           reward_high: number | null
@@ -210,6 +211,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_archived?: boolean
           out_of_scope?: string[] | null
           reward_critical?: number | null
           reward_high?: number | null
@@ -226,6 +228,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_archived?: boolean
           out_of_scope?: string[] | null
           reward_critical?: number | null
           reward_high?: number | null

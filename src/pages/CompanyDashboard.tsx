@@ -24,7 +24,8 @@ import {
   Users,
   CreditCard,
   Loader2,
-  Pencil
+  Pencil,
+  Archive
 } from 'lucide-react';
 import {
   Dialog,
@@ -274,7 +275,7 @@ export default function CompanyDashboard() {
                 <Shield className="h-6 w-6 text-secondary" />
               </div>
               <div>
-                <div className="text-2xl font-bold font-mono text-foreground">{programs.length}</div>
+                <div className="text-2xl font-bold font-mono text-foreground">{programs.filter(p => !p.is_archived).length}</div>
                 <div className="text-sm text-muted-foreground">Programas Ativos</div>
               </div>
             </div>
@@ -455,7 +456,7 @@ export default function CompanyDashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {programs.map((program) => {
+                  {programs.filter(p => !p.is_archived).map((program) => {
                     const programReports = reports.filter(r => r.program_id === program.id);
                     return (
                       <div key={program.id} className="p-3 rounded-lg border border-border hover:border-secondary/50 transition-all">
@@ -481,6 +482,39 @@ export default function CompanyDashboard() {
                       </div>
                     );
                   })}
+
+                  {/* Archived Programs Section */}
+                  {programs.filter(p => p.is_archived).length > 0 && (
+                    <div className="pt-4 mt-4 border-t border-border">
+                      <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+                        <Archive className="h-4 w-4" />
+                        <span className="text-xs font-medium">Arquivados ({programs.filter(p => p.is_archived).length})</span>
+                      </div>
+                      {programs.filter(p => p.is_archived).map((program) => {
+                        const programReports = reports.filter(r => r.program_id === program.id);
+                        return (
+                          <div key={program.id} className="p-3 rounded-lg border border-border/50 bg-muted/20 opacity-60 hover:opacity-100 transition-all mb-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-muted-foreground truncate">{program.title}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                  Arquivado
+                                </span>
+                                <Link to={`/programs/${program.id}/edit`}>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                </Link>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                              <span>{programReports.length} relatórios</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </CyberCard>

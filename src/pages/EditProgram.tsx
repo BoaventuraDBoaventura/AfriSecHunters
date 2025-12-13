@@ -25,7 +25,9 @@ import {
   FileText, 
   Sparkles,
   AlertCircle,
-  Copy
+  Copy,
+  Archive,
+  ArchiveRestore
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -75,6 +77,7 @@ export default function EditProgram() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [program, setProgram] = useState<Program | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
@@ -88,6 +91,7 @@ export default function EditProgram() {
   const [rewardHigh, setRewardHigh] = useState('100000');
   const [rewardCritical, setRewardCritical] = useState('250000');
   const [isActive, setIsActive] = useState(true);
+  const [isArchived, setIsArchived] = useState(false);
 
   useEffect(() => {
     if (id && user) {
@@ -121,6 +125,7 @@ export default function EditProgram() {
     setRewardHigh(String(programData.reward_high || 100000));
     setRewardCritical(String(programData.reward_critical || 250000));
     setIsActive(programData.is_active ?? true);
+    setIsArchived(programData.is_archived ?? false);
     setLoading(false);
   };
 
@@ -235,6 +240,36 @@ export default function EditProgram() {
     }
   };
 
+  const handleArchive = async () => {
+    if (!user || !id) return;
+
+    setArchiving(true);
+
+    const newArchivedState = !isArchived;
+    const { error } = await supabase
+      .from('programs')
+      .update({ is_archived: newArchivedState, is_active: newArchivedState ? false : isActive })
+      .eq('id', id)
+      .eq('company_id', user.id);
+
+    setArchiving(false);
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      setIsArchived(newArchivedState);
+      if (newArchivedState) {
+        setIsActive(false);
+      }
+      toast({ 
+        title: newArchivedState ? 'Programa arquivado' : 'Programa restaurado', 
+        description: newArchivedState 
+          ? 'O programa foi arquivado e não aparece mais para hunters.' 
+          : 'O programa foi restaurado e pode ser ativado novamente.'
+      });
+    }
+  };
+
   if (!user || profile?.role !== 'company') {
     return (
       <Layout>
@@ -279,7 +314,7 @@ export default function EditProgram() {
               </div>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button 
                 variant="outline" 
                 size="sm"
@@ -302,6 +337,23 @@ export default function EditProgram() {
               >
                 <Copy className="h-4 w-4 mr-2" />
                 Duplicar
+              </Button>
+
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleArchive}
+                disabled={archiving}
+                className={isArchived ? 'text-primary hover:text-primary' : 'text-warning hover:text-warning'}
+              >
+                {archiving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : isArchived ? (
+                  <ArchiveRestore className="h-4 w-4 mr-2" />
+                ) : (
+                  <Archive className="h-4 w-4 mr-2" />
+                )}
+                {isArchived ? 'Restaurar' : 'Arquivar'}
               </Button>
               
               <AlertDialog>
