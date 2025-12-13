@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { Layout } from '@/components/layout/Layout';
+import { NetworkMesh } from '@/components/ui/NetworkMesh';
 import { Bug, Shield, DollarSign, Trophy, Target, Zap, ArrowRight, Terminal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,6 +50,9 @@ export default function Landing() {
 
   return (
     <Layout>
+      {/* Network Mesh Background */}
+      <NetworkMesh />
+      
       {/* Hero Section */}
       <section className="relative min-h-[85vh] sm:min-h-[90vh] flex items-center justify-center gradient-hero overflow-hidden pt-16">
         <div className="absolute inset-0 scanlines opacity-30" />
