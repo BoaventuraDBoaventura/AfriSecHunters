@@ -183,6 +183,18 @@ export default function AdminDashboard() {
   };
 
   const handleResetPentesterStats = async () => {
+    // Delete all reports first
+    const { error: reportsError } = await supabase
+      .from('reports')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+    if (reportsError) {
+      toast({ title: 'Erro', description: 'Não foi possível apagar os relatórios', variant: 'destructive' });
+      return;
+    }
+
+    // Reset pentester stats
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -196,7 +208,7 @@ export default function AdminDashboard() {
     if (error) {
       toast({ title: 'Erro', description: 'Não foi possível resetar as estatísticas', variant: 'destructive' });
     } else {
-      toast({ title: 'Sucesso', description: 'Estatísticas dos pentesters foram resetadas' });
+      toast({ title: 'Sucesso', description: 'Estatísticas e relatórios foram resetados' });
       fetchData();
     }
   };
