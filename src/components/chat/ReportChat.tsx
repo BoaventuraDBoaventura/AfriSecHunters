@@ -1,29 +1,42 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Message, Profile } from '@/types/database';
+import { Profile } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageCircle } from 'lucide-react';
+import { Send, MessageCircle, Paperclip, X, Image, FileText, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReportChatProps {
   reportId: string;
 }
 
-interface MessageWithSender extends Message {
+interface MessageWithSender {
+  id: string;
+  report_id: string;
+  sender_id: string;
+  content: string;
+  attachment_url: string | null;
+  attachment_type: string | null;
+  created_at: string;
   sender: Profile;
 }
 
 export function ReportChat({ reportId }: ReportChatProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<MessageWithSender[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,7 +45,6 @@ export function ReportChat({ reportId }: ReportChatProps) {
   useEffect(() => {
     fetchMessages();
     
-    // Subscribe to realtime updates
     const channel = supabase
       .channel(`report-chat-${reportId}`)
       .on(
@@ -44,7 +56,6 @@ export function ReportChat({ reportId }: ReportChatProps) {
           filter: `report_id=eq.${reportId}`
         },
         async (payload) => {
-          // Fetch the sender profile for the new message
           const { data: senderData } = await supabase
             .from('profiles')
             .select('*')
@@ -72,6 +83,13 @@ export function ReportChat({ reportId }: ReportChatProps) {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    // Cleanup preview URL on unmount
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   const fetchMessages = async () => {
     const { data, error } = await supabase
       .from('messages')
@@ -88,20 +106,107 @@ export function ReportChat({ reportId }: ReportChatProps) {
     setLoading(false);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'Erro', description: 'O arquivo deve ter no máximo 10MB.', variant: 'destructive' });
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: 'Erro', description: 'Tipo de arquivo não suportado. Use imagens, PDF ou texto.', variant: 'destructive' });
+      return;
+    }
+
+    setPendingFile(file);
+    
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const clearPendingFile = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPendingFile(null);
+    setPreviewUrl(null);
+  };
+
+  const uploadFile = async (file: File): Promise<{ url: string; type: string } | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${reportId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('chat-attachments')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('chat-attachments')
+      .getPublicUrl(fileName);
+
+    return {
+      url: publicUrl,
+      type: file.type.startsWith('image/') ? 'image' : 'file'
+    };
+  };
+
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user || sending) return;
+    if ((!newMessage.trim() && !pendingFile) || !user || sending) return;
 
     setSending(true);
-    const { error } = await supabase.from('messages').insert({
-      report_id: reportId,
-      sender_id: user.id,
-      content: newMessage.trim()
-    });
+    setUploading(!!pendingFile);
 
-    if (!error) {
-      setNewMessage('');
+    try {
+      let attachmentUrl: string | null = null;
+      let attachmentType: string | null = null;
+
+      // Upload file if present
+      if (pendingFile) {
+        const uploadResult = await uploadFile(pendingFile);
+        if (uploadResult) {
+          attachmentUrl = uploadResult.url;
+          attachmentType = uploadResult.type;
+        } else {
+          toast({ title: 'Erro', description: 'Falha ao enviar arquivo.', variant: 'destructive' });
+          setSending(false);
+          setUploading(false);
+          return;
+        }
+      }
+
+      const { error } = await supabase.from('messages').insert({
+        report_id: reportId,
+        sender_id: user.id,
+        content: newMessage.trim() || (pendingFile ? `📎 ${pendingFile.name}` : ''),
+        attachment_url: attachmentUrl,
+        attachment_type: attachmentType
+      });
+
+      if (!error) {
+        setNewMessage('');
+        clearPendingFile();
+      }
+    } catch (err) {
+      console.error('Send error:', err);
+      toast({ title: 'Erro', description: 'Falha ao enviar mensagem.', variant: 'destructive' });
+    } finally {
+      setSending(false);
+      setUploading(false);
     }
-    setSending(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -109,6 +214,35 @@ export function ReportChat({ reportId }: ReportChatProps) {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const renderAttachment = (message: MessageWithSender) => {
+    if (!message.attachment_url) return null;
+
+    if (message.attachment_type === 'image') {
+      return (
+        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="block mt-2">
+          <img 
+            src={message.attachment_url} 
+            alt="Anexo" 
+            className="max-w-full max-h-64 rounded-lg border border-border/50 hover:opacity-90 transition-opacity"
+          />
+        </a>
+      );
+    }
+
+    return (
+      <a 
+        href={message.attachment_url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm"
+      >
+        <FileText className="h-4 w-4 text-primary" />
+        <span className="truncate">Arquivo anexado</span>
+        <Download className="h-4 w-4 ml-auto" />
+      </a>
+    );
   };
 
   if (loading) {
@@ -160,6 +294,7 @@ export function ReportChat({ reportId }: ReportChatProps) {
                     }`}
                   >
                     {message.content}
+                    {renderAttachment(message)}
                   </div>
                 </div>
               </div>
@@ -169,8 +304,51 @@ export function ReportChat({ reportId }: ReportChatProps) {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Pending File Preview */}
+      {pendingFile && (
+        <div className="mt-2 p-2 bg-muted/50 rounded-lg border border-border/50 flex items-center gap-2">
+          {previewUrl ? (
+            <img src={previewUrl} alt="Preview" className="h-12 w-12 object-cover rounded" />
+          ) : (
+            <div className="h-12 w-12 rounded bg-primary/20 flex items-center justify-center">
+              <FileText className="h-6 w-6 text-primary" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{pendingFile.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {(pendingFile.size / 1024).toFixed(1)} KB
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={clearPendingFile}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Input Area */}
       <div className="flex gap-2 mt-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf,.txt"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={sending || uploading}
+          className="border-border/50 hover:border-primary hover:bg-primary/10"
+        >
+          <Paperclip className="h-4 w-4" />
+        </Button>
         <Textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
@@ -181,10 +359,14 @@ export function ReportChat({ reportId }: ReportChatProps) {
         />
         <Button
           onClick={handleSendMessage}
-          disabled={!newMessage.trim() || sending}
+          disabled={(!newMessage.trim() && !pendingFile) || sending}
           className="h-auto bg-primary hover:bg-primary/90"
         >
-          <Send className="h-4 w-4" />
+          {uploading ? (
+            <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
         </Button>
       </div>
     </div>
