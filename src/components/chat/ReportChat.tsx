@@ -64,8 +64,8 @@ export function ReportChat({ reportId }: ReportChatProps) {
 
           if (senderData) {
             const newMsg = {
-              ...payload.new,
-              sender: senderData
+              ...(payload.new as Omit<MessageWithSender, 'sender'>),
+              sender: senderData as Profile
             } as MessageWithSender;
             
             setMessages(prev => [...prev, newMsg]);

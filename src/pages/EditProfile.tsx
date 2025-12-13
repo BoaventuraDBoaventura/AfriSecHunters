@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { PayoutDetails, PayoutMethod } from '@/types/database';
+import { PayoutSettings } from '@/components/pentester/PayoutSettings';
 import { 
   User, 
   Building2, 
@@ -42,6 +44,10 @@ export default function EditProfile() {
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
 
+  // Payout fields (for pentesters)
+  const [payoutMethod, setPayoutMethod] = useState<PayoutMethod | null>(null);
+  const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -56,6 +62,8 @@ export default function EditProfile() {
       setCompanyName(profile.company_name || '');
       setCompanyWebsite(profile.company_website || '');
       setAvatarUrl(profile.avatar_url);
+      setPayoutMethod(profile.payout_method || null);
+      setPayoutDetails(profile.payout_details || null);
     }
   }, [profile]);
 
@@ -150,6 +158,8 @@ export default function EditProfile() {
             display_name: displayName.trim() || null,
             bio: bio.trim() || null,
             skills: skills.length > 0 ? skills : null,
+            payout_method: payoutMethod,
+            payout_details: payoutDetails,
           };
 
       const { error } = await supabase
@@ -363,6 +373,18 @@ export default function EditProfile() {
                 <p className="text-xs text-muted-foreground">
                   {skills.length}/10 habilidades
                 </p>
+              </div>
+            )}
+
+            {/* Payout Settings (Pentester only) */}
+            {isPentester && (
+              <div className="pt-4 border-t border-border">
+                <PayoutSettings
+                  payoutMethod={payoutMethod}
+                  payoutDetails={payoutDetails}
+                  onPayoutMethodChange={setPayoutMethod}
+                  onPayoutDetailsChange={setPayoutDetails}
+                />
               </div>
             )}
           </div>

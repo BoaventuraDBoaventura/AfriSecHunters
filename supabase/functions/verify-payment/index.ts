@@ -63,6 +63,22 @@ serve(async (req) => {
     // Get the reward amount from metadata
     const rewardAmount = parseFloat(matchingSession.metadata?.reward_amount || '0');
 
+    // Fetch report details to get company and pentester IDs
+    const { data: report, error: reportFetchError } = await supabaseAdmin
+      .from('reports')
+      .select('*, program:programs!reports_program_id_fkey(*)')
+      .eq('id', reportId)
+      .single();
+
+    if (reportFetchError || !report) {
+      logStep("Error fetching report", { error: reportFetchError?.message });
+      throw new Error(`Failed to fetch report: ${reportFetchError?.message}`);
+    }
+
+    // Calculate platform fee (10%)
+    const platformFee = rewardAmount * 0.10;
+    const netAmount = rewardAmount - platformFee;
+
     // Update the report status to paid
     const { error: updateError } = await supabaseAdmin
       .from('reports')
@@ -77,7 +93,30 @@ serve(async (req) => {
       throw new Error(`Failed to update report: ${updateError.message}`);
     }
 
-    logStep("Report updated to paid", { reportId, rewardAmount });
+    // Record the transaction
+    const { error: transactionError } = await supabaseAdmin
+      .from('platform_transactions')
+      .insert({
+        report_id: reportId,
+        company_id: report.program?.company_id,
+        pentester_id: report.pentester_id,
+        gross_amount: rewardAmount,
+        platform_fee: platformFee,
+        net_amount: netAmount,
+        stripe_session_id: matchingSession.id,
+        stripe_payment_intent: matchingSession.payment_intent as string,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      });
+
+    if (transactionError) {
+      logStep("Error recording transaction", { error: transactionError.message });
+      // Don't throw - the payment was successful, just log the error
+    } else {
+      logStep("Transaction recorded", { platformFee, netAmount });
+    }
+
+    logStep("Report updated to paid", { reportId, rewardAmount, platformFee, netAmount });
 
     return new Response(JSON.stringify({ 
       paid: true, 

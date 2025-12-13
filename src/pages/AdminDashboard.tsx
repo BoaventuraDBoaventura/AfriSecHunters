@@ -6,8 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, Program, Report } from '@/types/database';
-import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3 } from 'lucide-react';
+import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3, DollarSign } from 'lucide-react';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
+import { AdminFinance } from '@/components/admin/AdminFinance';
 import { AdminFilters, DateRange } from '@/components/admin/AdminFilters';
 import { exportToCsv } from '@/lib/exportCsv';
 import { Button } from '@/components/ui/button';
@@ -240,9 +241,12 @@ export default function AdminDashboard() {
         {/* Tabs */}
         <CyberCard glow>
           <Tabs defaultValue="analytics">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" /> Analytics
+              </TabsTrigger>
+              <TabsTrigger value="finance" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" /> Finanças
               </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4" /> Usuários
@@ -258,6 +262,11 @@ export default function AdminDashboard() {
             {/* Analytics Tab */}
             <TabsContent value="analytics">
               <AdminAnalytics users={filteredUsers} programs={filteredPrograms} reports={filteredReports} />
+            </TabsContent>
+
+            {/* Finance Tab */}
+            <TabsContent value="finance">
+              <AdminFinance dateFrom={dateRange.from} dateTo={dateRange.to} />
             </TabsContent>
 
             {/* Users Tab */}
