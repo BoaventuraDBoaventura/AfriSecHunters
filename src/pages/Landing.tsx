@@ -171,82 +171,118 @@ export default function Landing() {
       {/* For Companies Section */}
       <section className="py-12 sm:py-16 md:py-24 bg-card/50 relative">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                Para <span className="text-secondary">Empresas</span>
-              </h2>
-              <p className="text-muted-foreground mb-8">
-                Aproveite a expertise de milhares de pesquisadores de segurança para encontrar vulnerabilidades 
-                antes que atacantes mal-intencionados o façam.
-              </p>
-              
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-                    <Zap className="h-3 w-3 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Testes Contínuos</div>
-                    <div className="text-sm text-muted-foreground">
-                      Hunters testando sua aplicação 24/7, não apenas durante auditorias pontuais.
-                    </div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-                    <Shield className="h-3 w-3 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Pague por Resultados</div>
-                    <div className="text-sm text-muted-foreground">
-                      Só pague quando vulnerabilidades reais forem encontradas e validadas.
-                    </div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-                    <Trophy className="h-3 w-3 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Hunters Verificados</div>
-                    <div className="text-sm text-muted-foreground">
-                      Acesso a perfis completos, histórico e reputação de cada pesquisador.
-                    </div>
-                  </div>
-                </li>
-              </ul>
+          {/* Section Header */}
+          <div className="text-center mb-10 sm:mb-14">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+              Para <span className="text-secondary">Empresas</span>
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
+              Aproveite a expertise de milhares de pesquisadores de segurança para encontrar vulnerabilidades 
+              antes que atacantes mal-intencionados o façam.
+            </p>
+          </div>
 
-              <Link to="/auth?mode=signup&role=company" className="inline-block mt-8">
-                <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                  Criar Programa de Bug Bounty
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+            {/* Benefits Grid */}
+            <div className="grid sm:grid-cols-1 gap-4">
+              <CyberCard className="flex items-start gap-4 p-5">
+                <div className="h-12 w-12 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center flex-shrink-0">
+                  <Zap className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <div className="font-semibold text-lg text-foreground mb-1">Testes Contínuos</div>
+                  <div className="text-sm text-muted-foreground">
+                    Hunters testando sua aplicação 24/7, não apenas durante auditorias pontuais.
+                  </div>
+                </div>
+              </CyberCard>
+              
+              <CyberCard className="flex items-start gap-4 p-5">
+                <div className="h-12 w-12 rounded-lg bg-secondary/20 border border-secondary/50 flex items-center justify-center flex-shrink-0">
+                  <Shield className="h-6 w-6 text-secondary" />
+                </div>
+                <div>
+                  <div className="font-semibold text-lg text-foreground mb-1">Pague por Resultados</div>
+                  <div className="text-sm text-muted-foreground">
+                    Só pague quando vulnerabilidades reais forem encontradas e validadas.
+                  </div>
+                </div>
+              </CyberCard>
+              
+              <CyberCard className="flex items-start gap-4 p-5">
+                <div className="h-12 w-12 rounded-lg bg-accent/20 border border-accent/50 flex items-center justify-center flex-shrink-0">
+                  <Trophy className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <div className="font-semibold text-lg text-foreground mb-1">Hunters Verificados</div>
+                  <div className="text-sm text-muted-foreground">
+                    Acesso a perfis completos, histórico e reputação de cada pesquisador.
+                  </div>
+                </div>
+              </CyberCard>
+
+              <div className="mt-2">
+                <Link to="/auth?mode=signup&role=company">
+                  <Button size="lg" className="w-full sm:w-auto bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                    Criar Programa de Bug Bounty
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            <div className="relative order-first md:order-last">
-              <CyberCard glow className="p-4 sm:p-6 md:p-8">
-                <div className="font-mono text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
-                  // Exemplo de recompensas
+            {/* Rewards Card */}
+            <div className="relative">
+              <CyberCard glow className="p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-foreground">Exemplo de Recompensas</h3>
+                    <p className="text-xs text-muted-foreground font-mono">// reward_tiers.config</p>
+                  </div>
                 </div>
-                <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-low/10 border border-severity-low/30">
-                    <span className="font-semibold text-sm sm:text-base text-severity-low">Low</span>
-                    <span className="font-mono text-xs sm:text-sm text-severity-low">MZN 5K - 25K</span>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-low/10 border border-severity-low/30 hover:bg-severity-low/20 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-3 rounded-full bg-severity-low" />
+                      <span className="font-semibold text-severity-low">Low</span>
+                    </div>
+                    <span className="font-mono text-sm text-severity-low">MZN 5K - 25K</span>
                   </div>
-                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-medium/10 border border-severity-medium/30">
-                    <span className="font-semibold text-sm sm:text-base text-severity-medium">Medium</span>
-                    <span className="font-mono text-xs sm:text-sm text-severity-medium">MZN 25K - 100K</span>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-medium/10 border border-severity-medium/30 hover:bg-severity-medium/20 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-3 rounded-full bg-severity-medium" />
+                      <span className="font-semibold text-severity-medium">Medium</span>
+                    </div>
+                    <span className="font-mono text-sm text-severity-medium">MZN 25K - 100K</span>
                   </div>
-                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-high/10 border border-severity-high/30">
-                    <span className="font-semibold text-sm sm:text-base text-severity-high">High</span>
-                    <span className="font-mono text-xs sm:text-sm text-severity-high">MZN 100K - 250K</span>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-high/10 border border-severity-high/30 hover:bg-severity-high/20 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-3 rounded-full bg-severity-high" />
+                      <span className="font-semibold text-severity-high">High</span>
+                    </div>
+                    <span className="font-mono text-sm text-severity-high">MZN 100K - 250K</span>
                   </div>
-                  <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 rounded-lg bg-severity-critical/10 border border-severity-critical/30 animate-pulse">
-                    <span className="font-semibold text-sm sm:text-base text-severity-critical">Critical</span>
-                    <span className="font-mono text-xs sm:text-sm text-severity-critical">MZN 250K+</span>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-severity-critical/10 border border-severity-critical/30 hover:bg-severity-critical/20 transition-colors relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-severity-critical/5 to-transparent animate-pulse" />
+                    <div className="flex items-center gap-3 relative z-10">
+                      <div className="h-3 w-3 rounded-full bg-severity-critical animate-pulse" />
+                      <span className="font-semibold text-severity-critical">Critical</span>
+                    </div>
+                    <span className="font-mono text-sm text-severity-critical relative z-10">MZN 250K+</span>
                   </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground text-center">
+                    Valores variam conforme o programa e a severidade da vulnerabilidade
+                  </p>
                 </div>
               </CyberCard>
             </div>
