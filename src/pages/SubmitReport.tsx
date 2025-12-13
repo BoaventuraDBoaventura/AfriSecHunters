@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EvidenceUpload } from '@/components/reports/EvidenceUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { VulnerabilityType, SeverityLevel, VULNERABILITY_LABELS, SEVERITY_LABELS } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Bug, Send, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Bug, Send, AlertCircle, Paperclip } from 'lucide-react';
 
 const TEMPLATES: Record<VulnerabilityType, { steps: string; impact: string; recommendation: string }> = {
   xss: {
@@ -56,6 +57,41 @@ const TEMPLATES: Record<VulnerabilityType, { steps: string; impact: string; reco
     impact: 'CRÍTICO: Um atacante pode executar comandos arbitrários no servidor, potencialmente comprometendo todo o sistema.',
     recommendation: 'URGENTE: Remova qualquer funcionalidade que execute comandos do sistema. Use sandboxing e principle of least privilege.',
   },
+  info_disclosure: {
+    steps: `1. Acesse o endpoint: [URL]
+2. [Descreva como a informação é exposta]
+3. Observe os dados sensíveis retornados`,
+    impact: 'Informações sensíveis podem ser expostas a atacantes, incluindo dados de configuração, credenciais ou informações de usuários.',
+    recommendation: 'Remova informações sensíveis de respostas públicas. Implemente controles de acesso adequados.',
+  },
+  csrf: {
+    steps: `1. Autentique-se na aplicação
+2. Acesse a página maliciosa: [URL]
+3. Observe a ação executada sem consentimento`,
+    impact: 'Um atacante pode forçar usuários autenticados a executar ações não intencionadas na aplicação.',
+    recommendation: 'Implemente tokens CSRF em todos os formulários. Use SameSite cookies e verifique Origin/Referer headers.',
+  },
+  open_redirect: {
+    steps: `1. Acesse a URL: [URL com parâmetro de redirecionamento]
+2. Modifique o parâmetro para: https://site-malicioso.com
+3. Observe o redirecionamento`,
+    impact: 'Atacantes podem usar a confiança dos usuários na aplicação para redirecioná-los a sites maliciosos para phishing.',
+    recommendation: 'Valide URLs de redirecionamento contra uma allowlist. Evite redirecionamentos baseados em parâmetros do usuário.',
+  },
+  business_logic: {
+    steps: `1. [Descreva o fluxo normal]
+2. [Descreva a manipulação do fluxo]
+3. [Descreva o resultado inesperado]`,
+    impact: 'Falhas de lógica podem permitir bypass de controles de negócio, manipulação de preços, ou acesso a funcionalidades restritas.',
+    recommendation: 'Revise a lógica de negócio. Implemente validações server-side para todos os fluxos críticos.',
+  },
+  dos: {
+    steps: `1. Identifique o endpoint/funcionalidade: [URL]
+2. [Descreva o método de sobrecarga]
+3. Observe a degradação ou indisponibilidade do serviço`,
+    impact: 'A aplicação pode ficar indisponível para usuários legítimos, causando perda de receita e danos à reputação.',
+    recommendation: 'Implemente rate limiting, timeouts e circuit breakers. Considere usar CDN e proteção contra DDoS.',
+  },
   other: {
     steps: `1. [Descreva o primeiro passo]
 2. [Descreva o segundo passo]
@@ -80,6 +116,7 @@ export default function SubmitReport() {
   const [impact, setImpact] = useState('');
   const [recommendation, setRecommendation] = useState('');
   const [proofOfConcept, setProofOfConcept] = useState('');
+  const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
 
   const handleTypeChange = (type: VulnerabilityType) => {
     setVulnerabilityType(type);
@@ -115,6 +152,7 @@ export default function SubmitReport() {
       impact: impact.trim() || null,
       recommendation: recommendation.trim() || null,
       proof_of_concept: proofOfConcept.trim() || null,
+      evidence_urls: evidenceUrls.length > 0 ? evidenceUrls : null,
     });
 
     setLoading(false);
@@ -265,6 +303,19 @@ export default function SubmitReport() {
                 value={proofOfConcept}
                 onChange={(e) => setProofOfConcept(e.target.value)}
                 className="bg-input border-border focus:border-primary min-h-[100px] font-mono text-sm"
+              />
+            </div>
+
+            {/* Evidence Upload */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                Evidências (Screenshots, Vídeos, PDFs)
+              </Label>
+              <EvidenceUpload
+                onUploadComplete={setEvidenceUrls}
+                existingUrls={evidenceUrls}
+                maxFiles={5}
               />
             </div>
 

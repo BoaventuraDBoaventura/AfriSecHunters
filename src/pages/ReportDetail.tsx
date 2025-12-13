@@ -5,6 +5,8 @@ import { CyberCard } from '@/components/ui/CyberCard';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReportChat } from '@/components/chat/ReportChat';
+import { StatusTimeline } from '@/components/reports/StatusTimeline';
+import { CVSSIndicator } from '@/components/reports/CVSSIndicator';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +24,10 @@ import {
   Shield,
   Lightbulb,
   Code,
-  DollarSign
+  DollarSign,
+  History,
+  Image,
+  ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -115,7 +120,7 @@ export default function ReportDetail() {
           <div className="lg:col-span-2 space-y-6">
             {/* Header */}
             <CyberCard glow>
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-4">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center">
                     <Bug className="h-6 w-6 text-primary" />
@@ -127,7 +132,7 @@ export default function ReportDetail() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-col items-start sm:items-end gap-2">
                   <SeverityBadge severity={report.severity} />
                   <StatusBadge status={report.status} />
                 </div>
@@ -161,6 +166,9 @@ export default function ReportDetail() {
               </TabsList>
 
               <TabsContent value="details" className="mt-6 space-y-6">
+                {/* CVSS Indicator */}
+                <CVSSIndicator severity={report.severity} />
+
                 {/* Description */}
                 <CyberCard>
                   <div className="flex items-center gap-2 mb-4">
@@ -179,7 +187,7 @@ export default function ReportDetail() {
                       <Code className="h-5 w-5 text-secondary" />
                       <h2 className="text-lg font-semibold text-foreground">Passos para Reproduzir</h2>
                     </div>
-                    <div className="prose prose-sm prose-invert max-w-none text-muted-foreground whitespace-pre-wrap font-mono text-sm bg-muted/30 p-4 rounded-lg">
+                    <div className="prose prose-sm prose-invert max-w-none text-muted-foreground whitespace-pre-wrap font-mono text-sm bg-muted/30 p-4 rounded-lg overflow-x-auto">
                       {report.steps_to_reproduce}
                     </div>
                   </CyberCard>
@@ -220,6 +228,46 @@ export default function ReportDetail() {
                     </div>
                     <div className="prose prose-sm prose-invert max-w-none text-muted-foreground whitespace-pre-wrap font-mono text-sm bg-muted/30 p-4 rounded-lg overflow-x-auto">
                       {report.proof_of_concept}
+                    </div>
+                  </CyberCard>
+                )}
+
+                {/* Evidence */}
+                {report.evidence_urls && report.evidence_urls.length > 0 && (
+                  <CyberCard>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Image className="h-5 w-5 text-secondary" />
+                      <h2 className="text-lg font-semibold text-foreground">Evidências</h2>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {report.evidence_urls.map((url, index) => {
+                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                        return (
+                          <a
+                            key={index}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative rounded-lg border border-border overflow-hidden hover:border-primary transition-colors"
+                          >
+                            {isImage ? (
+                              <img
+                                src={url}
+                                alt={`Evidência ${index + 1}`}
+                                className="w-full h-32 object-cover group-hover:opacity-80 transition-opacity"
+                              />
+                            ) : (
+                              <div className="w-full h-32 flex flex-col items-center justify-center gap-2 bg-muted/30">
+                                <FileText className="h-8 w-8 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Arquivo</span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/50">
+                              <ExternalLink className="h-6 w-6 text-primary" />
+                            </div>
+                          </a>
+                        );
+                      })}
                     </div>
                   </CyberCard>
                 )}
@@ -278,11 +326,24 @@ export default function ReportDetail() {
               </CyberCard>
             )}
 
+            {/* Status Timeline */}
+            <CyberCard>
+              <div className="flex items-center gap-2 mb-4">
+                <History className="h-5 w-5 text-muted-foreground" />
+                <h3 className="font-semibold text-foreground">Histórico de Status</h3>
+              </div>
+              <StatusTimeline 
+                reportId={report.id} 
+                currentStatus={report.status} 
+                createdAt={report.created_at}
+              />
+            </CyberCard>
+
             {/* Timeline */}
             <CyberCard>
               <div className="flex items-center gap-2 mb-4">
                 <Calendar className="h-5 w-5 text-muted-foreground" />
-                <h3 className="font-semibold text-foreground">Timeline</h3>
+                <h3 className="font-semibold text-foreground">Datas</h3>
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">

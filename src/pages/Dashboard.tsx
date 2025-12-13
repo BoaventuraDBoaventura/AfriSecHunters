@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout/Layout';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ReportFilters } from '@/components/reports/ReportFilters';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Report, Program, Profile } from '@/types/database';
+import { Report, Program, Profile, SeverityLevel, ReportStatus } from '@/types/database';
 import { EarningsSection } from '@/components/pentester/EarningsSection';
 import { 
   Bug, 
@@ -23,11 +24,24 @@ import {
 
 type ReportWithProgram = Report & { program: Program & { company: Profile } };
 
+const SEVERITY_ORDER: Record<SeverityLevel, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
 export default function Dashboard() {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportWithProgram[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter states
+  const [search, setSearch] = useState('');
+  const [severityFilter, setSeverityFilter] = useState<SeverityLevel | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<ReportStatus | 'all'>('all');
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'severity'>('date_desc');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -64,6 +78,45 @@ export default function Dashboard() {
     }
   };
 
+  // Filtered and sorted reports
+  const filteredReports = useMemo(() => {
+    let result = [...reports];
+
+    // Apply search filter
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      result = result.filter(r => 
+        r.title.toLowerCase().includes(searchLower) ||
+        r.program?.title?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply severity filter
+    if (severityFilter !== 'all') {
+      result = result.filter(r => r.severity === severityFilter);
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(r => r.status === statusFilter);
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'date_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'severity':
+          return SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity];
+        case 'date_desc':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+
+    return result;
+  }, [reports, search, severityFilter, statusFilter, sortBy]);
+
   if (authLoading || loading) {
     return (
       <Layout>
@@ -95,7 +148,7 @@ export default function Dashboard() {
     <Layout>
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold">
               Olá, <span className="text-primary text-glow-sm">{profile?.display_name || 'Hunter'}</span>
@@ -113,7 +166,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <CyberCard>
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center">
@@ -121,7 +174,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <div className="text-2xl font-bold font-mono text-foreground">{totalReports}</div>
-                <div className="text-sm text-muted-foreground">Relatórios Enviados</div>
+                <div className="text-sm text-muted-foreground">Relatórios</div>
               </div>
             </div>
           </CyberCard>
@@ -156,7 +209,7 @@ export default function Dashboard() {
                 <DollarSign className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <div className="text-2xl font-bold font-mono text-primary">MZN {totalEarnings.toLocaleString()}</div>
+                <div className="text-xl sm:text-2xl font-bold font-mono text-primary">MZN {totalEarnings.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">Total Ganho</div>
               </div>
             </div>
@@ -174,6 +227,20 @@ export default function Dashboard() {
                 </h2>
               </div>
 
+              {/* Filters */}
+              <div className="mb-6">
+                <ReportFilters
+                  search={search}
+                  severity={severityFilter}
+                  status={statusFilter}
+                  sort={sortBy}
+                  onSearchChange={setSearch}
+                  onSeverityChange={setSeverityFilter}
+                  onStatusChange={setStatusFilter}
+                  onSortChange={setSortBy}
+                />
+              </div>
+
               {reports.length === 0 ? (
                 <div className="text-center py-12">
                   <Bug className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
@@ -185,9 +252,14 @@ export default function Dashboard() {
                     </Button>
                   </Link>
                 </div>
+              ) : filteredReports.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <p className="text-muted-foreground">Nenhum relatório encontrado com os filtros aplicados.</p>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  {reports.slice(0, 10).map((report) => (
+                  {filteredReports.slice(0, 10).map((report) => (
                     <Link 
                       key={report.id} 
                       to={`/reports/${report.id}`}
@@ -221,6 +293,12 @@ export default function Dashboard() {
                       </div>
                     </Link>
                   ))}
+                  
+                  {filteredReports.length > 10 && (
+                    <p className="text-center text-sm text-muted-foreground pt-4">
+                      Mostrando 10 de {filteredReports.length} relatórios
+                    </p>
+                  )}
                 </div>
               )}
             </CyberCard>
