@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.process-gibrapay-payout]
 verify_jwt = false
+
+[functions.check-gibrapay-balance]
+verify_jwt = false
