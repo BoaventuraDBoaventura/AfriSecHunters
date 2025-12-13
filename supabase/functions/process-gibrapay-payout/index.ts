@@ -88,8 +88,8 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { reportId, transactionId, directPayment } = await req.json();
-    logStep("Processing payout", { reportId, transactionId, directPayment });
+    const { reportId, transactionId, directPayment, phoneNumber: providedPhoneNumber, walletType, rewardAmount: providedRewardAmount } = await req.json();
+    logStep("Processing payout", { reportId, transactionId, directPayment, providedPhoneNumber: providedPhoneNumber ? providedPhoneNumber.slice(-4) : null, walletType });
 
     if (!reportId) {
       throw new Error("Report ID is required");
@@ -114,44 +114,56 @@ serve(async (req) => {
       throw new Error(`Report not found: ${reportError?.message || "No data"}`);
     }
 
+    // Use provided reward amount or fall back to report's reward_amount
+    const effectiveRewardAmount = providedRewardAmount || report.reward_amount;
+
     logStep("Report found", { 
       pentesterId: report.pentester_id,
-      rewardAmount: report.reward_amount,
+      rewardAmount: effectiveRewardAmount,
       payoutMethod: report.pentester?.payout_method
     });
 
     const pentester = report.pentester;
-    const payoutMethod = pentester?.payout_method;
-    const payoutDetails = pentester?.payout_details;
-
-    // Check if payout method is M-Pesa or E-Mola
-    if (payoutMethod !== "mpesa" && payoutMethod !== "emola") {
-      logStep("Payout method not automatic", { payoutMethod });
+    
+    // Determine phone number: use provided number from company, or fall back to pentester's configured number
+    let phoneNumber = providedPhoneNumber;
+    let payoutMethod = walletType || 'mpesa';
+    
+    if (!phoneNumber) {
+      // Fall back to pentester's configured payout details
+      const pentesterPayoutMethod = pentester?.payout_method;
+      const payoutDetails = pentester?.payout_details;
       
-      // Update transaction to manual payout
-      if (transactionId) {
-        await supabaseClient
-          .from("platform_transactions")
-          .update({ payout_type: "manual" })
-          .eq("id", transactionId);
+      // Check if payout method is M-Pesa or E-Mola
+      if (pentesterPayoutMethod !== "mpesa" && pentesterPayoutMethod !== "emola") {
+        logStep("Payout method not automatic", { payoutMethod: pentesterPayoutMethod });
+        
+        // Update transaction to manual payout
+        if (transactionId) {
+          await supabaseClient
+            .from("platform_transactions")
+            .update({ payout_type: "manual" })
+            .eq("id", transactionId);
+        }
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          automatic: false,
+          message: "Payout method requires manual transfer" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       
-      return new Response(JSON.stringify({ 
-        success: true, 
-        automatic: false,
-        message: "Payout method requires manual transfer" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      phoneNumber = payoutDetails?.phone_number;
+      payoutMethod = pentesterPayoutMethod;
     }
-
-    // Get phone number from payout details
-    const phoneNumber = payoutDetails?.phone_number;
+    
     if (!phoneNumber) {
-      throw new Error("Pentester phone number not configured");
+      throw new Error("Número de telefone não fornecido");
     }
 
-    const grossAmount = report.reward_amount || 0;
+    const grossAmount = effectiveRewardAmount || 0;
     const platformFee = Math.round(grossAmount * 0.10 * 100) / 100; // 10% commission
     const netAmount = Math.round((grossAmount - platformFee) * 100) / 100;
 
