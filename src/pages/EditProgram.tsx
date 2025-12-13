@@ -24,7 +24,8 @@ import {
   Ban, 
   FileText, 
   Sparkles,
-  AlertCircle 
+  AlertCircle,
+  Copy
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -278,33 +279,59 @@ export default function EditProgram() {
               </div>
             </div>
             
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Eliminar
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Eliminar Programa</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja eliminar este programa? Esta ação não pode ser desfeita.
-                    Todos os relatórios associados também serão afetados.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    disabled={deleting}
-                  >
-                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Eliminar'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/programs/create', { 
+                  state: { 
+                    duplicate: true,
+                    programData: {
+                      title: `${title} (Cópia)`,
+                      description,
+                      rules,
+                      scope: scope.filter(s => s.trim()),
+                      outOfScope: outOfScope.filter(s => s.trim()),
+                      rewardLow,
+                      rewardMedium,
+                      rewardHigh,
+                      rewardCritical,
+                    }
+                  }
+                })}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Duplicar
+              </Button>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eliminar Programa</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja eliminar este programa? Esta ação não pode ser desfeita.
+                      Todos os relatórios associados também serão afetados.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deleting}
+                    >
+                      {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Eliminar'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
