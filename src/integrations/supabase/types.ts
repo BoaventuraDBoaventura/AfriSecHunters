@@ -14,7 +14,230 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          report_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          report_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          report_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          company_logo: string | null
+          company_name: string | null
+          company_website: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          is_verified: boolean | null
+          rank_title: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          skills: string[] | null
+          total_earnings: number | null
+          total_points: number | null
+          updated_at: string | null
+          vulnerabilities_found: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          company_logo?: string | null
+          company_name?: string | null
+          company_website?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id: string
+          is_verified?: boolean | null
+          rank_title?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          skills?: string[] | null
+          total_earnings?: number | null
+          total_points?: number | null
+          updated_at?: string | null
+          vulnerabilities_found?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          company_logo?: string | null
+          company_name?: string | null
+          company_website?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          rank_title?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          skills?: string[] | null
+          total_earnings?: number | null
+          total_points?: number | null
+          updated_at?: string | null
+          vulnerabilities_found?: number | null
+        }
+        Relationships: []
+      }
+      programs: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          out_of_scope: string[] | null
+          reward_critical: number | null
+          reward_high: number | null
+          reward_low: number | null
+          reward_medium: number | null
+          rules: string | null
+          scope: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          out_of_scope?: string[] | null
+          reward_critical?: number | null
+          reward_high?: number | null
+          reward_low?: number | null
+          reward_medium?: number | null
+          rules?: string | null
+          scope?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          out_of_scope?: string[] | null
+          reward_critical?: number | null
+          reward_high?: number | null
+          reward_low?: number | null
+          reward_medium?: number | null
+          rules?: string | null
+          scope?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          impact: string | null
+          pentester_id: string
+          program_id: string
+          proof_of_concept: string | null
+          recommendation: string | null
+          reward_amount: number | null
+          severity: Database["public"]["Enums"]["severity_level"]
+          status: Database["public"]["Enums"]["report_status"] | null
+          steps_to_reproduce: string | null
+          title: string
+          updated_at: string | null
+          vulnerability_type: Database["public"]["Enums"]["vulnerability_type"]
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          impact?: string | null
+          pentester_id: string
+          program_id: string
+          proof_of_concept?: string | null
+          recommendation?: string | null
+          reward_amount?: number | null
+          severity: Database["public"]["Enums"]["severity_level"]
+          status?: Database["public"]["Enums"]["report_status"] | null
+          steps_to_reproduce?: string | null
+          title: string
+          updated_at?: string | null
+          vulnerability_type: Database["public"]["Enums"]["vulnerability_type"]
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          impact?: string | null
+          pentester_id?: string
+          program_id?: string
+          proof_of_concept?: string | null
+          recommendation?: string | null
+          reward_amount?: number | null
+          severity?: Database["public"]["Enums"]["severity_level"]
+          status?: Database["public"]["Enums"]["report_status"] | null
+          steps_to_reproduce?: string | null
+          title?: string
+          updated_at?: string | null
+          vulnerability_type?: Database["public"]["Enums"]["vulnerability_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_pentester_id_fkey"
+            columns: ["pentester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +246,17 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      report_status: "pending" | "in_review" | "accepted" | "rejected" | "paid"
+      severity_level: "low" | "medium" | "high" | "critical"
+      user_role: "pentester" | "company" | "admin"
+      vulnerability_type:
+        | "xss"
+        | "sql_injection"
+        | "idor"
+        | "ssrf"
+        | "auth_bypass"
+        | "rce"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +383,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      report_status: ["pending", "in_review", "accepted", "rejected", "paid"],
+      severity_level: ["low", "medium", "high", "critical"],
+      user_role: ["pentester", "company", "admin"],
+      vulnerability_type: [
+        "xss",
+        "sql_injection",
+        "idor",
+        "ssrf",
+        "auth_bypass",
+        "rce",
+        "other",
+      ],
+    },
   },
 } as const
