@@ -3,8 +3,63 @@ import { Button } from '@/components/ui/button';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { Layout } from '@/components/layout/Layout';
 import { Bug, Shield, DollarSign, Trophy, Target, Zap, ArrowRight, Terminal } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Landing() {
+  const [stats, setStats] = useState({
+    totalEarnings: 0,
+    totalReports: 0,
+    totalCompanies: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      // Buscar total de recompensas pagas
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('total_earnings')
+        .eq('role', 'pentester');
+      
+      const totalEarnings = profiles?.reduce((sum, p) => sum + (p.total_earnings || 0), 0) || 0;
+
+      // Buscar total de vulnerabilidades reportadas
+      const { count: totalReports } = await supabase
+        .from('reports')
+        .select('*', { count: 'exact', head: true });
+
+      // Buscar total de empresas
+      const { count: totalCompanies } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'company');
+
+      setStats({
+        totalEarnings: totalEarnings,
+        totalReports: totalReports || 0,
+        totalCompanies: totalCompanies || 0,
+      });
+    };
+
+    fetchStats();
+  }, []);
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) {
+      return `MZN ${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `MZN ${(value / 1000).toFixed(0)}K`;
+    }
+    return `MZN ${value.toLocaleString()}`;
+  };
+
+  const formatNumber = (value: number) => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    }
+    return value.toString();
+  };
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -55,15 +110,21 @@ export default function Landing() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto mt-16">
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">MZN 160M+</div>
+              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">
+                {formatCurrency(stats.totalEarnings)}
+              </div>
               <div className="text-sm text-muted-foreground mt-1">Pagos em recompensas</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">15K+</div>
+              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">
+                {formatNumber(stats.totalReports)}
+              </div>
               <div className="text-sm text-muted-foreground mt-1">Vulnerabilidades reportadas</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">500+</div>
+              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">
+                {formatNumber(stats.totalCompanies)}
+              </div>
               <div className="text-sm text-muted-foreground mt-1">Empresas protegidas</div>
             </div>
           </div>
