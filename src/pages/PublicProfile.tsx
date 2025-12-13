@@ -22,9 +22,11 @@ import {
   Skull,
   Eye,
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Badge {
   id: string;
@@ -35,6 +37,15 @@ interface Badge {
   earned: boolean;
 }
 
+interface MonthlyStats {
+  month: string;
+  total: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
 export default function PublicProfile() {
   const { id } = useParams();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -43,6 +54,7 @@ export default function PublicProfile() {
     acceptedReports: number;
     severityCounts: Record<SeverityLevel, number>;
   } | null>(null);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,6 +87,21 @@ export default function PublicProfile() {
           acceptedReports: data.accepted_reports,
           severityCounts: data.severity_counts,
         });
+      }
+
+      // Fetch monthly stats para o gráfico
+      const { data: monthlyData, error: monthlyError } = await supabase
+        .rpc('get_hunter_monthly_stats', { hunter_id: id });
+
+      if (!monthlyError && monthlyData && Array.isArray(monthlyData)) {
+        // Ordenar do mais antigo para o mais recente e formatar mês
+        const formatted = (monthlyData as unknown as MonthlyStats[])
+          .sort((a, b) => a.month.localeCompare(b.month))
+          .map(item => ({
+            ...item,
+            month: new Date(item.month + '-01').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+          }));
+        setMonthlyStats(formatted);
       }
     }
     setLoading(false);
@@ -339,6 +366,92 @@ export default function PublicProfile() {
                 })}
               </div>
             </CyberCard>
+
+            {/* Evolution Chart */}
+            {monthlyStats.length > 0 && (
+              <CyberCard>
+                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Evolução ao Longo do Tempo
+                </h2>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlyStats}>
+                      <defs>
+                        <linearGradient id="colorCritical" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--severity-critical))" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(var(--severity-critical))" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="colorHigh" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--severity-high))" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(var(--severity-high))" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="colorMedium" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--severity-medium))" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(var(--severity-medium))" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="colorLow" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--severity-low))" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(var(--severity-low))" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="month" 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                      />
+                      <YAxis 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          color: 'hsl(var(--foreground))'
+                        }}
+                      />
+                      <Legend />
+                      <Area 
+                        type="monotone" 
+                        dataKey="critical" 
+                        name="Critical"
+                        stackId="1"
+                        stroke="hsl(var(--severity-critical))" 
+                        fill="url(#colorCritical)" 
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="high" 
+                        name="High"
+                        stackId="1"
+                        stroke="hsl(var(--severity-high))" 
+                        fill="url(#colorHigh)" 
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="medium" 
+                        name="Medium"
+                        stackId="1"
+                        stroke="hsl(var(--severity-medium))" 
+                        fill="url(#colorMedium)" 
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="low" 
+                        name="Low"
+                        stackId="1"
+                        stroke="hsl(var(--severity-low))" 
+                        fill="url(#colorLow)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CyberCard>
+            )}
 
             {/* Badges */}
             <CyberCard>
