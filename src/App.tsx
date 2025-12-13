@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import CreateProgram from "./pages/CreateProgram";
 import Leaderboard from "./pages/Leaderboard";
+import PublicProfile from "./pages/PublicProfile";
 import SubmitReport from "./pages/SubmitReport";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/company-dashboard" element={<CompanyDashboard />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/hunters/:id" element={<PublicProfile />} />
             <Route path="/submit-report/:programId" element={<SubmitReport />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

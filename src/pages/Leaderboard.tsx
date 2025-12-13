@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/types/database';
-import { Trophy, Medal, Award, TrendingUp, Bug, DollarSign } from 'lucide-react';
+import { Trophy, Medal, Award, TrendingUp, Bug, DollarSign, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Leaderboard() {
@@ -118,10 +119,11 @@ export default function Leaderboard() {
 
               {/* Rows */}
               {hunters.map((hunter, index) => (
-                <div 
+                <Link
                   key={hunter.id}
+                  to={`/hunters/${hunter.id}`}
                   className={cn(
-                    "grid grid-cols-12 gap-4 px-4 py-4 rounded-lg border transition-all hover:bg-primary/5",
+                    "grid grid-cols-12 gap-4 px-4 py-4 rounded-lg border transition-all hover:bg-primary/5 group cursor-pointer",
                     getRankStyles(index)
                   )}
                 >
@@ -138,9 +140,10 @@ export default function Leaderboard() {
                         </span>
                       )}
                     </div>
-                    <div>
-                      <div className="font-semibold text-foreground">
+                    <div className="flex-1">
+                      <div className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
                         {hunter.display_name || 'Anonymous'}
+                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {hunter.rank_title}
@@ -162,7 +165,7 @@ export default function Leaderboard() {
                       R$ {(hunter.total_earnings || 0).toLocaleString()}
                     </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
