@@ -169,6 +169,9 @@ export default function EditProfile() {
 
       if (error) throw error;
 
+      // Update the auth context with new profile data
+      await updateProfile(updates);
+
       toast({ title: 'Perfil atualizado com sucesso!' });
       
       // Redirect to appropriate dashboard
