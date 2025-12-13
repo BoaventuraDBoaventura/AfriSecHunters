@@ -85,6 +85,12 @@ serve(async (req) => {
     const platformFee = Math.round(rewardAmountCents * platformCommissionRate);
     const totalAmount = rewardAmountCents + platformFee;
     
+    // Stripe minimum for MZN is approximately 50 MZN (5000 cents)
+    const MINIMUM_REWARD_MZN = 50;
+    if (rewardAmount < MINIMUM_REWARD_MZN) {
+      throw new Error(`O valor mínimo de recompensa é ${MINIMUM_REWARD_MZN} MZN devido aos requisitos do processador de pagamento.`);
+    }
+    
     logStep("Payment amounts calculated", {
       rewardAmount,
       rewardAmountCents,
