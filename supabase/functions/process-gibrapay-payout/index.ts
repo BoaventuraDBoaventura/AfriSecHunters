@@ -44,10 +44,13 @@ async function makeGibrapayTransfer(
     const data = await response.json();
     logStep("GibaPay response", { status: response.status, data });
 
-    if (response.ok && data.success) {
+    // GibaPay returns status: "success" in data.status field
+    const isSuccess = response.ok && data.status === "success";
+    
+    if (isSuccess) {
       return {
         success: true,
-        transaction_id: data.transaction_id || data.id,
+        transaction_id: data.data?.id || data.transaction_id,
         message: data.message,
       };
     }
