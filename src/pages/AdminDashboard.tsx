@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { CyberCard } from '@/components/ui/CyberCard';
@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Profile, Program, Report } from '@/types/database';
 import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3 } from 'lucide-react';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
+import { AdminFilters, DateRange } from '@/components/admin/AdminFilters';
+import { exportToCsv } from '@/lib/exportCsv';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -33,6 +35,8 @@ export default function AdminDashboard() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [quickFilter, setQuickFilter] = useState('all');
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -60,6 +64,71 @@ export default function AdminDashboard() {
     if (reportsRes.data) setReports(reportsRes.data as Report[]);
     
     setLoading(false);
+  };
+
+  // Filter data by date range
+  const filterByDate = <T extends { created_at: string }>(items: T[]): T[] => {
+    if (!dateRange.from && !dateRange.to) return items;
+    
+    return items.filter(item => {
+      const itemDate = new Date(item.created_at);
+      if (dateRange.from && itemDate < dateRange.from) return false;
+      if (dateRange.to) {
+        const endOfDay = new Date(dateRange.to);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (itemDate > endOfDay) return false;
+      }
+      return true;
+    });
+  };
+
+  const filteredUsers = useMemo(() => filterByDate(users), [users, dateRange]);
+  const filteredPrograms = useMemo(() => filterByDate(programs), [programs, dateRange]);
+  const filteredReports = useMemo(() => filterByDate(reports), [reports, dateRange]);
+
+  // Export handlers
+  const handleExport = (type: 'users' | 'programs' | 'reports' | 'all') => {
+    if (type === 'users' || type === 'all') {
+      exportToCsv(filteredUsers, 'usuarios', [
+        { key: 'id', label: 'ID' },
+        { key: 'display_name', label: 'Nome' },
+        { key: 'role', label: 'Tipo' },
+        { key: 'total_points', label: 'Pontos' },
+        { key: 'vulnerabilities_found', label: 'Bugs' },
+        { key: 'total_earnings', label: 'Ganhos' },
+        { key: 'rank_title', label: 'Rank' },
+        { key: 'is_verified', label: 'Verificado' },
+        { key: 'created_at', label: 'Criado em' },
+      ]);
+    }
+    
+    if (type === 'programs' || type === 'all') {
+      exportToCsv(filteredPrograms, 'programas', [
+        { key: 'id', label: 'ID' },
+        { key: 'title', label: 'Título' },
+        { key: 'description', label: 'Descrição' },
+        { key: 'reward_low', label: 'Recompensa Low' },
+        { key: 'reward_medium', label: 'Recompensa Medium' },
+        { key: 'reward_high', label: 'Recompensa High' },
+        { key: 'reward_critical', label: 'Recompensa Critical' },
+        { key: 'is_active', label: 'Ativo' },
+        { key: 'created_at', label: 'Criado em' },
+      ]);
+    }
+    
+    if (type === 'reports' || type === 'all') {
+      exportToCsv(filteredReports, 'relatorios', [
+        { key: 'id', label: 'ID' },
+        { key: 'title', label: 'Título' },
+        { key: 'vulnerability_type', label: 'Tipo' },
+        { key: 'severity', label: 'Severidade' },
+        { key: 'status', label: 'Status' },
+        { key: 'reward_amount', label: 'Recompensa' },
+        { key: 'created_at', label: 'Criado em' },
+      ]);
+    }
+    
+    toast({ title: 'Exportado!', description: 'Arquivo CSV baixado com sucesso.' });
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -140,21 +209,30 @@ export default function AdminDashboard() {
           <p className="text-muted-foreground mt-2">Gerencie usuários, programas e relatórios da plataforma.</p>
         </div>
 
+        {/* Filters */}
+        <AdminFilters
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          onExport={handleExport}
+          quickFilter={quickFilter}
+          onQuickFilterChange={setQuickFilter}
+        />
+
         {/* Stats */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <CyberCard className="text-center">
             <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-            <div className="text-2xl font-bold font-mono text-primary">{users.length}</div>
+            <div className="text-2xl font-bold font-mono text-primary">{filteredUsers.length}</div>
             <div className="text-sm text-muted-foreground">Usuários</div>
           </CyberCard>
           <CyberCard className="text-center">
             <FileText className="h-8 w-8 text-secondary mx-auto mb-2" />
-            <div className="text-2xl font-bold font-mono text-secondary">{programs.length}</div>
+            <div className="text-2xl font-bold font-mono text-secondary">{filteredPrograms.length}</div>
             <div className="text-sm text-muted-foreground">Programas</div>
           </CyberCard>
           <CyberCard className="text-center">
             <Shield className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold font-mono text-yellow-500">{reports.length}</div>
+            <div className="text-2xl font-bold font-mono text-yellow-500">{filteredReports.length}</div>
             <div className="text-sm text-muted-foreground">Relatórios</div>
           </CyberCard>
         </div>
@@ -179,7 +257,7 @@ export default function AdminDashboard() {
 
             {/* Analytics Tab */}
             <TabsContent value="analytics">
-              <AdminAnalytics users={users} programs={programs} reports={reports} />
+              <AdminAnalytics users={filteredUsers} programs={filteredPrograms} reports={filteredReports} />
             </TabsContent>
 
             {/* Users Tab */}
@@ -196,7 +274,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map(user => (
+                    {filteredUsers.map(user => (
                       <tr key={user.id} className="border-b border-border/50 hover:bg-primary/5">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
@@ -290,7 +368,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {programs.map(program => (
+                    {filteredPrograms.map(program => (
                       <tr key={program.id} className="border-b border-border/50 hover:bg-primary/5">
                         <td className="py-3 px-4">
                           <div className="font-medium text-foreground">{program.title}</div>
@@ -375,7 +453,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {reports.map(report => (
+                    {filteredReports.map(report => (
                       <tr key={report.id} className="border-b border-border/50 hover:bg-primary/5">
                         <td className="py-3 px-4">
                           <div className="font-medium text-foreground">{report.title}</div>
