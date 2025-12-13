@@ -156,7 +156,7 @@ export function useRealtimeNotifications() {
               in_review: { emoji: '👀', text: 'está em análise' },
               accepted: { emoji: '✅', text: 'foi aceito!' },
               rejected: { emoji: '❌', text: 'foi rejeitado' },
-              paid: { emoji: '💰', text: `foi pago! R$ ${updatedReport.reward_amount?.toLocaleString() || '0'}` }
+              paid: { emoji: '💰', text: `foi pago! MZN ${updatedReport.reward_amount?.toLocaleString() || '0'}` }
             };
 
             const status = statusMessages[updatedReport.status];

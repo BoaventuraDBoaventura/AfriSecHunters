@@ -7,6 +7,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { NotificationProvider } from "@/components/NotificationProvider";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Programs from "./pages/Programs";
 import ProgramDetail from "./pages/ProgramDetail";
 import Dashboard from "./pages/Dashboard";
@@ -33,6 +35,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/programs" element={<Programs />} />
               <Route path="/programs/create" element={<CreateProgram />} />
               <Route path="/programs/:id" element={<ProgramDetail />} />
