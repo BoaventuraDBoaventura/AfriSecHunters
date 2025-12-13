@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, Program, Report } from '@/types/database';
-import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye } from 'lucide-react';
+import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3 } from 'lucide-react';
+import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -160,8 +161,11 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <CyberCard glow>
-          <Tabs defaultValue="users">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+          <Tabs defaultValue="analytics">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" /> Analytics
+              </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4" /> Usuários
               </TabsTrigger>
@@ -172,6 +176,11 @@ export default function AdminDashboard() {
                 <Shield className="h-4 w-4" /> Relatórios
               </TabsTrigger>
             </TabsList>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics">
+              <AdminAnalytics users={users} programs={programs} reports={reports} />
+            </TabsContent>
 
             {/* Users Tab */}
             <TabsContent value="users">
