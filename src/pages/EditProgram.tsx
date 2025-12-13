@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Program } from '@/types/database';
+import { ProgramChangeHistory } from '@/components/program/ProgramChangeHistory';
 import { 
   ArrowLeft, 
   Shield, 
@@ -385,6 +386,9 @@ export default function EditProgram() {
               </AlertDialog>
             </div>
           </div>
+
+          {/* Change History */}
+          {id && <ProgramChangeHistory programId={id} />}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Status Toggle */}
