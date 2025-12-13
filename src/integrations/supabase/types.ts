@@ -249,7 +249,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_rank_title: { Args: { points: number }; Returns: string }
     }
     Enums: {
       report_status: "pending" | "in_review" | "accepted" | "rejected" | "paid"
