@@ -8,6 +8,10 @@ import { Label } from '@/components/ui/label';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { Bug, Building2, User, Mail, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Turnstile } from '@marsidev/react-turnstile';
+import { supabase } from '@/integrations/supabase/client';
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -27,6 +31,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -34,10 +40,46 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
+  const verifyTurnstile = async (token: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-turnstile', {
+        body: { token }
+      });
+      
+      if (error) {
+        console.error('Turnstile verification error:', error);
+        return false;
+      }
+      
+      return data?.success === true;
+    } catch (err) {
+      console.error('Error calling verify-turnstile:', err);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Verify Turnstile token if configured
+    if (TURNSTILE_SITE_KEY) {
+      if (!turnstileToken) {
+        setError('Por favor, complete a verificação de segurança');
+        setLoading(false);
+        return;
+      }
+
+      const isValid = await verifyTurnstile(turnstileToken);
+      if (!isValid) {
+        setError('Verificação de segurança falhou. Tente novamente.');
+        setTurnstileToken(null);
+        setTurnstileKey(prev => prev + 1);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       if (mode === 'signup') {
@@ -73,6 +115,9 @@ export default function Auth() {
       setError('Ocorreu um erro. Tente novamente.');
     } finally {
       setLoading(false);
+      // Reset turnstile after submission
+      setTurnstileToken(null);
+      setTurnstileKey(prev => prev + 1);
     }
   };
 
@@ -192,6 +237,22 @@ export default function Auth() {
                 </Link>
               </div>
 
+              {/* Turnstile Widget */}
+              {TURNSTILE_SITE_KEY && (
+                <div className="flex justify-center">
+                  <Turnstile
+                    key={turnstileKey}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={setTurnstileToken}
+                    onError={() => setTurnstileToken(null)}
+                    onExpire={() => setTurnstileToken(null)}
+                    options={{
+                      theme: 'dark',
+                    }}
+                  />
+                </div>
+              )}
+
               {error && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/50 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -202,7 +263,7 @@ export default function Auth() {
               <Button
                 type="submit"
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={loading}
+                disabled={loading || (TURNSTILE_SITE_KEY && !turnstileToken)}
               >
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
@@ -219,7 +280,11 @@ export default function Auth() {
             <div className="text-center mt-6">
               <button
                 type="button"
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                onClick={() => {
+                  setMode(mode === 'signin' ? 'signup' : 'signin');
+                  setTurnstileToken(null);
+                  setTurnstileKey(prev => prev + 1);
+                }}
                 className="text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 {mode === 'signin' 
