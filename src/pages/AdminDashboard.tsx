@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, Program, Report } from '@/types/database';
-import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3, DollarSign } from 'lucide-react';
+import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3, DollarSign, RotateCcw } from 'lucide-react';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { AdminFinance } from '@/components/admin/AdminFinance';
 import { AdminFilters, DateRange } from '@/components/admin/AdminFilters';
@@ -182,6 +182,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleResetPentesterStats = async () => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        total_points: 0,
+        total_earnings: 0,
+        vulnerabilities_found: 0,
+        rank_title: 'Novato'
+      })
+      .eq('role', 'pentester');
+
+    if (error) {
+      toast({ title: 'Erro', description: 'Não foi possível resetar as estatísticas', variant: 'destructive' });
+    } else {
+      toast({ title: 'Sucesso', description: 'Estatísticas dos pentesters foram resetadas' });
+      fetchData();
+    }
+  };
+
   if (adminLoading || loading) {
     return (
       <Layout>
@@ -211,13 +230,42 @@ export default function AdminDashboard() {
         </div>
 
         {/* Filters */}
-        <AdminFilters
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          onExport={handleExport}
-          quickFilter={quickFilter}
-          onQuickFilterChange={setQuickFilter}
-        />
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <AdminFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            onExport={handleExport}
+            quickFilter={quickFilter}
+            onQuickFilterChange={setQuickFilter}
+          />
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Resetar Estatísticas
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Resetar estatísticas dos pentesters?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação irá zerar pontos, ganhos e vulnerabilidades encontradas de todos os pentesters. 
+                  Os perfis serão mantidos. Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleResetPentesterStats}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Resetar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         {/* Stats */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
