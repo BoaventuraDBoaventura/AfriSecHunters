@@ -92,10 +92,10 @@ export function Navbar() {
             ) : (
               <div className="flex items-center gap-2">
                 <Button variant="ghost" onClick={() => navigate('/auth')}>
-                  Sign In
+                  Entrar
                 </Button>
                 <Button onClick={() => navigate('/auth?mode=signup')} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  Get Started
+                  Começar
                 </Button>
               </div>
             )}
