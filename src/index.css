@@ -213,10 +213,77 @@
   to { width: 100%; }
 }
 
+@keyframes glitch {
+  0%, 100% {
+    text-shadow: 
+      0 0 10px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
+    transform: translate(0);
+  }
+  10% {
+    text-shadow: 
+      -2px 0 hsl(var(--secondary)),
+      2px 0 hsl(var(--destructive)),
+      0 0 10px hsl(var(--primary) / 0.5);
+    transform: translate(-1px, 1px);
+  }
+  20% {
+    text-shadow: 
+      2px 0 hsl(var(--secondary)),
+      -2px 0 hsl(var(--destructive)),
+      0 0 10px hsl(var(--primary) / 0.5);
+    transform: translate(1px, -1px);
+  }
+  30% {
+    text-shadow: 
+      0 0 10px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
+    transform: translate(0);
+  }
+  40% {
+    text-shadow: 
+      -1px 0 hsl(var(--secondary)),
+      1px 0 hsl(var(--destructive)),
+      0 0 15px hsl(var(--primary) / 0.6);
+    transform: translate(2px, 0);
+  }
+  50% {
+    text-shadow: 
+      0 0 10px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
+    transform: translate(0);
+  }
+  60% {
+    text-shadow: 
+      1px 0 hsl(var(--secondary)),
+      -1px 0 hsl(var(--destructive)),
+      0 0 10px hsl(var(--primary) / 0.5);
+    transform: translate(-2px, 1px);
+  }
+  70%, 90% {
+    text-shadow: 
+      0 0 10px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
+    transform: translate(0);
+  }
+  80% {
+    text-shadow: 
+      -2px 0 hsl(var(--secondary)),
+      2px 0 hsl(var(--destructive)),
+      0 0 20px hsl(var(--primary) / 0.7);
+    transform: translate(1px, -2px);
+  }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .animate-flicker {
   animation: flicker 0.1s infinite;
+}
+
+.animate-glitch {
+  animation: glitch 3s ease-in-out infinite;
+  position: relative;
 }
