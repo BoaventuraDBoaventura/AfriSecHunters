@@ -26,9 +26,9 @@ export default function Landing() {
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in">
-            <span className="text-foreground">Find Bugs.</span>
+            <span className="text-foreground">Encontre Bugs.</span>
             <br />
-            <span className="text-primary text-glow">Get Paid.</span>
+            <span className="text-primary text-glow">Seja Pago.</span>
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in">
