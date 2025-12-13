@@ -28,7 +28,7 @@ async function makeGibrapayTransfer(
   logStep("Making GibaPay transfer", { phoneNumber: phoneNumber.slice(-4), amount, reference });
   
   try {
-    const response = await fetch("https://gibrapay.online/api/v1/transfer", {
+    const response = await fetch("https://gibrapay.online/v1/transfer", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -36,9 +36,8 @@ async function makeGibrapayTransfer(
       },
       body: JSON.stringify({
         wallet_id: walletId,
-        to: phoneNumber,
-        amount: amount.toString(),
-        reference: reference,
+        number_phone: phoneNumber,
+        amount: amount,
       }),
     });
 
