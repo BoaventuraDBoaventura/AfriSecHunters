@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Report, Program, Profile } from '@/types/database';
+import { EarningsSection } from '@/components/pentester/EarningsSection';
 import { 
   Bug, 
   DollarSign, 
@@ -227,6 +228,9 @@ export default function Dashboard() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Earnings Section */}
+            <EarningsSection />
+
             {/* Rank Card */}
             <CyberCard glow>
               <div className="flex items-center gap-2 mb-4">

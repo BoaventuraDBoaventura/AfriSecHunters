@@ -59,6 +59,59 @@ export type Database = {
           },
         ]
       }
+      platform_transactions: {
+        Row: {
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          gross_amount: number
+          id: string
+          net_amount: number
+          pentester_id: string
+          platform_fee: number
+          report_id: string
+          status: string
+          stripe_payment_intent: string | null
+          stripe_session_id: string | null
+        }
+        Insert: {
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          gross_amount: number
+          id?: string
+          net_amount: number
+          pentester_id: string
+          platform_fee: number
+          report_id: string
+          status?: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          pentester_id?: string
+          platform_fee?: number
+          report_id?: string
+          status?: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_transactions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -70,6 +123,8 @@ export type Database = {
           display_name: string | null
           id: string
           is_verified: boolean | null
+          payout_details: Json | null
+          payout_method: Database["public"]["Enums"]["payout_method"] | null
           rank_title: string | null
           role: Database["public"]["Enums"]["user_role"]
           skills: string[] | null
@@ -88,6 +143,8 @@ export type Database = {
           display_name?: string | null
           id: string
           is_verified?: boolean | null
+          payout_details?: Json | null
+          payout_method?: Database["public"]["Enums"]["payout_method"] | null
           rank_title?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           skills?: string[] | null
@@ -106,6 +163,8 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_verified?: boolean | null
+          payout_details?: Json | null
+          payout_method?: Database["public"]["Enums"]["payout_method"] | null
           rank_title?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           skills?: string[] | null
@@ -282,6 +341,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      payout_method: "bank_transfer" | "mpesa" | "paypal"
       report_status: "pending" | "in_review" | "accepted" | "rejected" | "paid"
       severity_level: "low" | "medium" | "high" | "critical"
       user_role: "pentester" | "company" | "admin"
@@ -421,6 +481,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      payout_method: ["bank_transfer", "mpesa", "paypal"],
       report_status: ["pending", "in_review", "accepted", "rejected", "paid"],
       severity_level: ["low", "medium", "high", "critical"],
       user_role: ["pentester", "company", "admin"],

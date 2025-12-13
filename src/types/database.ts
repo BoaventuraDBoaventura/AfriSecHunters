@@ -3,6 +3,17 @@ export type ReportStatus = 'pending' | 'in_review' | 'accepted' | 'rejected' | '
 export type SeverityLevel = 'low' | 'medium' | 'high' | 'critical';
 export type VulnerabilityType = 'xss' | 'sql_injection' | 'idor' | 'ssrf' | 'auth_bypass' | 'rce' | 'other';
 
+export type PayoutMethod = 'bank_transfer' | 'mpesa' | 'paypal';
+
+export interface PayoutDetails {
+  [key: string]: string | undefined;
+  bank_name?: string;
+  account_number?: string;
+  nib?: string;
+  phone_number?: string;
+  paypal_email?: string;
+}
+
 export interface Profile {
   id: string;
   role: UserRole;
@@ -18,6 +29,8 @@ export interface Profile {
   vulnerabilities_found: number;
   rank_title: string;
   is_verified: boolean;
+  payout_method: PayoutMethod | null;
+  payout_details: PayoutDetails | null;
   created_at: string;
   updated_at: string;
 }
