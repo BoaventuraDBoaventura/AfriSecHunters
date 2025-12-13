@@ -25,7 +25,8 @@ import {
   CreditCard,
   Loader2,
   Pencil,
-  Archive
+  Archive,
+  Smartphone
 } from 'lucide-react';
 import {
   Dialog,
@@ -54,6 +55,7 @@ export default function CompanyDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportWithDetails | null>(null);
   const [actionDialog, setActionDialog] = useState<{ type: 'accept' | 'reject' | 'view' | 'pay'; report: ReportWithDetails } | null>(null);
+  const [paymentMethodDialog, setPaymentMethodDialog] = useState<ReportWithDetails | null>(null);
   const [rewardAmount, setRewardAmount] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -189,6 +191,7 @@ export default function CompanyDashboard() {
     }
 
     setPaymentProcessing(true);
+    setPaymentMethodDialog(null);
     try {
       const { data, error } = await supabase.functions.invoke('create-reward-payment', {
         body: { 
@@ -200,12 +203,57 @@ export default function CompanyDashboard() {
       if (error) throw error;
 
       if (data.url) {
-        // Open Stripe checkout in a new tab
         window.open(data.url, '_blank');
       }
     } catch (error: any) {
       console.error('Error creating payment:', error);
       toast({ title: 'Erro', description: error.message || 'Erro ao criar pagamento.', variant: 'destructive' });
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
+
+  const handlePayWithMobileWallet = async (report: ReportWithDetails) => {
+    if (!report.reward_amount) {
+      toast({ title: 'Erro', description: 'Defina o valor da recompensa primeiro.', variant: 'destructive' });
+      return;
+    }
+
+    // Check pentester payout method
+    const pentesterPayoutMethod = report.pentester?.payout_method;
+    if (!pentesterPayoutMethod || (pentesterPayoutMethod !== 'mpesa' && pentesterPayoutMethod !== 'emola')) {
+      toast({ 
+        title: 'Método não disponível', 
+        description: 'O pentester não configurou M-Pesa ou E-Mola como método de recebimento.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    setPaymentProcessing(true);
+    setPaymentMethodDialog(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-gibrapay-payout', {
+        body: { 
+          reportId: report.id,
+          directPayment: true
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({ 
+          title: 'Pagamento enviado!', 
+          description: `Transferência de MZN ${report.reward_amount?.toLocaleString()} iniciada via ${pentesterPayoutMethod.toUpperCase()}.`
+        });
+        fetchData();
+      } else {
+        throw new Error(data.error || 'Erro ao processar pagamento');
+      }
+    } catch (error: any) {
+      console.error('Error with mobile wallet payment:', error);
+      toast({ title: 'Erro', description: error.message || 'Erro ao processar pagamento.', variant: 'destructive' });
     } finally {
       setPaymentProcessing(false);
     }
@@ -410,7 +458,7 @@ export default function CompanyDashboard() {
                             <Button 
                               size="sm"
                               className="bg-primary text-primary-foreground hover:bg-primary/90"
-                              onClick={() => handlePayWithStripe(report)}
+                              onClick={() => setPaymentMethodDialog(report)}
                               disabled={paymentProcessing}
                             >
                               {paymentProcessing ? (
@@ -418,7 +466,7 @@ export default function CompanyDashboard() {
                               ) : (
                                 <CreditCard className="h-4 w-4 mr-1" />
                               )}
-                              Pagar via Stripe
+                              Pagar Recompensa
                             </Button>
                           )}
                         </div>
@@ -656,6 +704,54 @@ export default function CompanyDashboard() {
             >
               {processing ? 'Processando...' : 'Rejeitar'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Method Selection Dialog */}
+      <Dialog open={!!paymentMethodDialog} onOpenChange={() => setPaymentMethodDialog(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Selecione o Método de Pagamento</DialogTitle>
+            <DialogDescription>
+              Escolha como deseja pagar a recompensa de MZN {paymentMethodDialog?.reward_amount?.toLocaleString()} 
+              para {paymentMethodDialog?.pentester?.display_name || 'o pentester'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <Button 
+              className="w-full justify-start gap-3 h-auto py-4 bg-muted hover:bg-muted/80"
+              variant="ghost"
+              onClick={() => paymentMethodDialog && handlePayWithStripe(paymentMethodDialog)}
+              disabled={paymentProcessing}
+            >
+              <CreditCard className="h-6 w-6 text-primary" />
+              <div className="text-left">
+                <p className="font-medium text-foreground">Pagar via Stripe</p>
+                <p className="text-xs text-muted-foreground">Cartão de crédito/débito internacional</p>
+              </div>
+            </Button>
+            
+            <Button 
+              className="w-full justify-start gap-3 h-auto py-4 bg-muted hover:bg-muted/80"
+              variant="ghost"
+              onClick={() => paymentMethodDialog && handlePayWithMobileWallet(paymentMethodDialog)}
+              disabled={paymentProcessing || !paymentMethodDialog?.pentester?.payout_method || 
+                (paymentMethodDialog?.pentester?.payout_method !== 'mpesa' && paymentMethodDialog?.pentester?.payout_method !== 'emola')}
+            >
+              <Smartphone className="h-6 w-6 text-secondary" />
+              <div className="text-left">
+                <p className="font-medium text-foreground">Carteira Móvel (M-Pesa / E-Mola)</p>
+                <p className="text-xs text-muted-foreground">
+                  {paymentMethodDialog?.pentester?.payout_method === 'mpesa' || paymentMethodDialog?.pentester?.payout_method === 'emola'
+                    ? `Transferência direta via ${paymentMethodDialog.pentester.payout_method.toUpperCase()}`
+                    : 'Pentester não configurou M-Pesa ou E-Mola'}
+                </p>
+              </div>
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPaymentMethodDialog(null)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
