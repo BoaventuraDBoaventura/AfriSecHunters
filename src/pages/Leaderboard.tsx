@@ -162,7 +162,7 @@ export default function Leaderboard() {
                   </div>
                   <div className="col-span-2 flex items-center justify-end">
                     <span className="font-mono text-primary">
-                      R$ {(hunter.total_earnings || 0).toLocaleString()}
+                      MZN {(hunter.total_earnings || 0).toLocaleString()}
                     </span>
                   </div>
                 </Link>

@@ -212,19 +212,19 @@ export default function ProgramDetail() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-severity-low/10 border border-severity-low/30">
                   <SeverityBadge severity="low" />
-                  <span className="font-mono font-semibold text-severity-low">R$ {program.reward_low}</span>
+                  <span className="font-mono font-semibold text-severity-low">MZN {program.reward_low?.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-severity-medium/10 border border-severity-medium/30">
                   <SeverityBadge severity="medium" />
-                  <span className="font-mono font-semibold text-severity-medium">R$ {program.reward_medium}</span>
+                  <span className="font-mono font-semibold text-severity-medium">MZN {program.reward_medium?.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-severity-high/10 border border-severity-high/30">
                   <SeverityBadge severity="high" />
-                  <span className="font-mono font-semibold text-severity-high">R$ {program.reward_high}</span>
+                  <span className="font-mono font-semibold text-severity-high">MZN {program.reward_high?.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-severity-critical/10 border border-severity-critical/30">
                   <SeverityBadge severity="critical" />
-                  <span className="font-mono font-semibold text-severity-critical">R$ {program.reward_critical}</span>
+                  <span className="font-mono font-semibold text-severity-critical">MZN {program.reward_critical?.toLocaleString()}</span>
                 </div>
               </div>
             </CyberCard>

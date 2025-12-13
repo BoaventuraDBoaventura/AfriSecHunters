@@ -118,19 +118,19 @@ export default function Programs() {
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                       <div className="flex items-center justify-between">
                         <SeverityBadge severity="low" className="text-[10px] py-0.5 px-2" />
-                        <span className="text-muted-foreground">R$ {program.reward_low}</span>
+                        <span className="text-muted-foreground">MZN {program.reward_low?.toLocaleString()}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <SeverityBadge severity="medium" className="text-[10px] py-0.5 px-2" />
-                        <span className="text-muted-foreground">R$ {program.reward_medium}</span>
+                        <span className="text-muted-foreground">MZN {program.reward_medium?.toLocaleString()}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <SeverityBadge severity="high" className="text-[10px] py-0.5 px-2" />
-                        <span className="text-muted-foreground">R$ {program.reward_high}</span>
+                        <span className="text-muted-foreground">MZN {program.reward_high?.toLocaleString()}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <SeverityBadge severity="critical" className="text-[10px] py-0.5 px-2" />
-                        <span className="text-muted-foreground">R$ {program.reward_critical}</span>
+                        <span className="text-muted-foreground">MZN {program.reward_critical?.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>

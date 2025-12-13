@@ -151,10 +151,10 @@ export default function PublicProfile() {
       {
         id: 'millionaire',
         name: 'Millionaire',
-        description: 'R$ 100.000+ em recompensas',
+        description: 'MZN 5.000.000+ em recompensas',
         icon: <DollarSign className="h-6 w-6" />,
         color: 'text-primary',
-        earned: (profile.total_earnings || 0) >= 100000,
+        earned: (profile.total_earnings || 0) >= 5000000,
       },
     ];
   };
@@ -298,7 +298,7 @@ export default function PublicProfile() {
               </div>
               <div>
                 <div className="text-3xl font-bold font-mono text-primary">
-                  R$ {((profile.total_earnings || 0) / 1000).toFixed(0)}k
+                  MZN {((profile.total_earnings || 0) / 1000).toFixed(0)}k
                 </div>
                 <div className="text-xs text-muted-foreground">Ganhos</div>
               </div>
@@ -444,7 +444,7 @@ export default function PublicProfile() {
                 <div className="flex justify-between items-center pt-4 border-t border-border">
                   <span className="text-muted-foreground">Total Ganho</span>
                   <span className="font-mono font-bold text-primary text-lg">
-                    R$ {(profile.total_earnings || 0).toLocaleString()}
+                    MZN {(profile.total_earnings || 0).toLocaleString()}
                   </span>
                 </div>
               </div>

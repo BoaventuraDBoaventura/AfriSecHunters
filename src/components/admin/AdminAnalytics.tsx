@@ -183,7 +183,7 @@ export function AdminAnalytics({ users, programs, reports }: AdminAnalyticsProps
         <CyberCard className="text-center p-4">
           <DollarSign className="h-6 w-6 text-primary mx-auto mb-2" />
           <div className="text-xl font-bold font-mono text-primary">
-            R$ {stats.totalPaid.toLocaleString()}
+            MZN {stats.totalPaid.toLocaleString()}
           </div>
           <div className="text-xs text-muted-foreground">Total Pago</div>
         </CyberCard>
@@ -344,7 +344,7 @@ export function AdminAnalytics({ users, programs, reports }: AdminAnalyticsProps
           </div>
           <div className="text-center p-4 bg-green-500/5 rounded-lg border border-green-500/20">
             <div className="text-2xl font-bold font-mono text-green-500">
-              R$ {stats.avgRewardPerBug.toFixed(0)}
+              MZN {stats.avgRewardPerBug.toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground">Média por Bug</div>
           </div>

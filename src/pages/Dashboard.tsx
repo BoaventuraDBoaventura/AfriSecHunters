@@ -155,7 +155,7 @@ export default function Dashboard() {
                 <DollarSign className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <div className="text-2xl font-bold font-mono text-primary">R$ {totalEarnings.toLocaleString()}</div>
+                <div className="text-2xl font-bold font-mono text-primary">MZN {totalEarnings.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">Total Ganho</div>
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function Dashboard() {
                           </span>
                           {report.reward_amount && report.status === 'paid' && (
                             <span className="text-primary font-mono font-semibold">
-                              +R$ {report.reward_amount}
+                              +MZN {report.reward_amount.toLocaleString()}
                             </span>
                           )}
                         </div>
@@ -250,7 +250,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <div className="text-xl font-bold font-mono text-primary">
-                        R$ {(profile?.total_earnings || 0).toLocaleString()}
+                        MZN {(profile?.total_earnings || 0).toLocaleString()}
                       </div>
                       <div className="text-xs text-muted-foreground">Total Ganho</div>
                     </div>

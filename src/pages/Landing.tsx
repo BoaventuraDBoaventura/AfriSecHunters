@@ -55,7 +55,7 @@ export default function Landing() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto mt-16">
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">R$ 2.5M+</div>
+              <div className="text-4xl font-bold text-primary font-mono text-glow-sm">MZN 160M+</div>
               <div className="text-sm text-muted-foreground mt-1">Pagos em recompensas</div>
             </div>
             <div className="text-center">
@@ -181,19 +181,19 @@ export default function Landing() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 rounded-lg bg-severity-low/10 border border-severity-low/30">
                     <span className="font-semibold text-severity-low">Low</span>
-                    <span className="font-mono text-severity-low">R$ 100 - R$ 500</span>
+                    <span className="font-mono text-severity-low">MZN 5.000 - MZN 25.000</span>
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-lg bg-severity-medium/10 border border-severity-medium/30">
                     <span className="font-semibold text-severity-medium">Medium</span>
-                    <span className="font-mono text-severity-medium">R$ 500 - R$ 2.000</span>
+                    <span className="font-mono text-severity-medium">MZN 25.000 - MZN 100.000</span>
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-lg bg-severity-high/10 border border-severity-high/30">
                     <span className="font-semibold text-severity-high">High</span>
-                    <span className="font-mono text-severity-high">R$ 2.000 - R$ 5.000</span>
+                    <span className="font-mono text-severity-high">MZN 100.000 - MZN 250.000</span>
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-lg bg-severity-critical/10 border border-severity-critical/30 animate-pulse">
                     <span className="font-semibold text-severity-critical">Critical</span>
-                    <span className="font-mono text-severity-critical">R$ 5.000+</span>
+                    <span className="font-mono text-severity-critical">MZN 250.000+</span>
                   </div>
                 </div>
               </CyberCard>
@@ -226,10 +226,10 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Bug className="h-6 w-6 text-primary" />
-              <span className="font-bold text-primary font-mono">BugHunter</span>
+              <span className="font-bold text-primary font-mono">AfriSec Hunters</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              © 2024 BugHunter. Todos os direitos reservados.
+              © 2024 AfriSec Hunters. Todos os direitos reservados.
             </div>
           </div>
         </div>

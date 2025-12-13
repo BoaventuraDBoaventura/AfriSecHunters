@@ -22,10 +22,10 @@ export default function CreateProgram() {
   const [rules, setRules] = useState('');
   const [scope, setScope] = useState<string[]>(['']);
   const [outOfScope, setOutOfScope] = useState<string[]>(['']);
-  const [rewardLow, setRewardLow] = useState('100');
-  const [rewardMedium, setRewardMedium] = useState('500');
-  const [rewardHigh, setRewardHigh] = useState('2000');
-  const [rewardCritical, setRewardCritical] = useState('5000');
+  const [rewardLow, setRewardLow] = useState('5000');
+  const [rewardMedium, setRewardMedium] = useState('25000');
+  const [rewardHigh, setRewardHigh] = useState('100000');
+  const [rewardCritical, setRewardCritical] = useState('250000');
 
   const addScopeItem = () => setScope([...scope, '']);
   const removeScopeItem = (index: number) => setScope(scope.filter((_, i) => i !== index));
@@ -65,10 +65,10 @@ export default function CreateProgram() {
       rules: rules.trim() || null,
       scope: scope.filter(s => s.trim()),
       out_of_scope: outOfScope.filter(s => s.trim()),
-      reward_low: parseFloat(rewardLow) || 100,
-      reward_medium: parseFloat(rewardMedium) || 500,
-      reward_high: parseFloat(rewardHigh) || 2000,
-      reward_critical: parseFloat(rewardCritical) || 5000,
+      reward_low: parseFloat(rewardLow) || 5000,
+      reward_medium: parseFloat(rewardMedium) || 25000,
+      reward_high: parseFloat(rewardHigh) || 100000,
+      reward_critical: parseFloat(rewardCritical) || 250000,
     });
 
     setLoading(false);
@@ -207,7 +207,7 @@ export default function CreateProgram() {
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-primary" />
-                <Label>Tabela de Recompensas (R$)</Label>
+                <Label>Tabela de Recompensas (MZN)</Label>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
