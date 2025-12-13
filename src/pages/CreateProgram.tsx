@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout/Layout';
 import { CyberCard } from '@/components/ui/CyberCard';
@@ -61,10 +61,28 @@ const RULES_TEMPLATE = `## Política de Divulgação Responsável
    - Recompensas são pagas após validação e correção
    - O valor é determinado pela severidade da vulnerabilidade`;
 
+interface DuplicateState {
+  duplicate?: boolean;
+  programData?: {
+    title: string;
+    description: string;
+    rules: string;
+    scope: string[];
+    outOfScope: string[];
+    rewardLow: string;
+    rewardMedium: string;
+    rewardHigh: string;
+    rewardCritical: string;
+  };
+}
+
 export default function CreateProgram() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile } = useAuth();
   const { toast } = useToast();
+
+  const duplicateState = location.state as DuplicateState | null;
 
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -79,6 +97,24 @@ export default function CreateProgram() {
   const [rewardCritical, setRewardCritical] = useState('250000');
   const [isActive, setIsActive] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isDuplicate, setIsDuplicate] = useState(false);
+
+  useEffect(() => {
+    if (duplicateState?.duplicate && duplicateState.programData) {
+      const data = duplicateState.programData;
+      setTitle(data.title);
+      setDescription(data.description);
+      setRules(data.rules);
+      setScope(data.scope.length ? data.scope : ['']);
+      setOutOfScope(data.outOfScope.length ? data.outOfScope : ['']);
+      setRewardLow(data.rewardLow);
+      setRewardMedium(data.rewardMedium);
+      setRewardHigh(data.rewardHigh);
+      setRewardCritical(data.rewardCritical);
+      setIsDuplicate(true);
+      toast({ title: 'Programa duplicado', description: 'Edite os dados e salve o novo programa.' });
+    }
+  }, []);
 
   const addScopeItem = () => setScope([...scope, '']);
   const removeScopeItem = (index: number) => setScope(scope.filter((_, i) => i !== index));
