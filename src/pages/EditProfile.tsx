@@ -43,6 +43,9 @@ export default function EditProfile() {
   // Company fields
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Payout fields (for pentesters)
   const [payoutMethod, setPayoutMethod] = useState<PayoutMethod | null>(null);
@@ -61,6 +64,7 @@ export default function EditProfile() {
       setSkills(profile.skills || []);
       setCompanyName(profile.company_name || '');
       setCompanyWebsite(profile.company_website || '');
+      setCompanyLogo(profile.company_logo || null);
       setAvatarUrl(profile.avatar_url);
       setPayoutMethod(profile.payout_method || null);
       setPayoutDetails(profile.payout_details || null);
@@ -120,6 +124,56 @@ export default function EditProfile() {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleLogoClick = () => {
+    logoInputRef.current?.click();
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Erro', description: 'Por favor, selecione uma imagem válida.', variant: 'destructive' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Erro', description: 'A imagem deve ter no máximo 5MB.', variant: 'destructive' });
+      return;
+    }
+
+    setUploadingLogo(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/company-logo.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+      setCompanyLogo(urlWithCacheBuster);
+
+      await supabase
+        .from('profiles')
+        .update({ company_logo: urlWithCacheBuster })
+        .eq('id', user.id);
+
+      toast({ title: 'Logo da empresa atualizada!' });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -278,6 +332,44 @@ export default function EditProfile() {
             {/* Company-specific fields */}
             {!isPentester && (
               <>
+                {/* Company Logo Upload */}
+                <div className="space-y-2">
+                  <Label>Logo da Empresa</Label>
+                  <div className="flex items-center gap-4">
+                    <div 
+                      className="relative cursor-pointer group"
+                      onClick={handleLogoClick}
+                    >
+                      <div className="h-20 w-20 rounded-lg bg-primary/20 border-2 border-primary/50 flex items-center justify-center overflow-hidden">
+                        {companyLogo ? (
+                          <img src={companyLogo} alt="Logo" className="h-full w-full object-cover" />
+                        ) : (
+                          <Building2 className="h-8 w-8 text-primary" />
+                        )}
+                      </div>
+                      <div className="absolute inset-0 rounded-lg bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="h-6 w-6 text-white" />
+                      </div>
+                      {uploadingLogo && (
+                        <div className="absolute inset-0 rounded-lg bg-black/60 flex items-center justify-center">
+                          <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Clique para carregar a logo</p>
+                      <p className="text-xs">PNG, JPG até 5MB</p>
+                    </div>
+                  </div>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Nome da Empresa</Label>
                   <Input
