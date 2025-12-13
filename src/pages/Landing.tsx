@@ -15,30 +15,17 @@ export default function Landing() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      // Buscar total de recompensas pagas
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('total_earnings')
-        .eq('role', 'pentester');
+      // Usar função segura que bypassa RLS para contar estatísticas
+      const { data, error } = await supabase.rpc('get_platform_stats');
       
-      const totalEarnings = profiles?.reduce((sum, p) => sum + (p.total_earnings || 0), 0) || 0;
-
-      // Buscar total de vulnerabilidades reportadas
-      const { count: totalReports } = await supabase
-        .from('reports')
-        .select('*', { count: 'exact', head: true });
-
-      // Buscar total de empresas
-      const { count: totalCompanies } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'company');
-
-      setStats({
-        totalEarnings: totalEarnings,
-        totalReports: totalReports || 0,
-        totalCompanies: totalCompanies || 0,
-      });
+      if (!error && data) {
+        const statsData = data as { total_earnings: number; total_reports: number; total_companies: number };
+        setStats({
+          totalEarnings: statsData.total_earnings || 0,
+          totalReports: statsData.total_reports || 0,
+          totalCompanies: statsData.total_companies || 0,
+        });
+      }
     };
 
     fetchStats();
