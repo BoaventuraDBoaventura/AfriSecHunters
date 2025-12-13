@@ -74,7 +74,7 @@ export default function Landing() {
           <h1 className="text-3xl xs:text-4xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 animate-fade-in leading-tight">
             <span className="text-foreground">Encontre Bugs.</span>
             <br />
-            <span className="text-primary text-glow">Seja Pago.</span>
+            <span className="text-primary animate-glitch">Seja Pago.</span>
           </h1>
           
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-8 animate-fade-in px-2">
