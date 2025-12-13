@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Programs from "./pages/Programs";
 import ProgramDetail from "./pages/ProgramDetail";
 import Dashboard from "./pages/Dashboard";
+import CompanyDashboard from "./pages/CompanyDashboard";
+import CreateProgram from "./pages/CreateProgram";
 import Leaderboard from "./pages/Leaderboard";
 import SubmitReport from "./pages/SubmitReport";
 import NotFound from "./pages/NotFound";
@@ -26,8 +28,10 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/programs" element={<Programs />} />
+            <Route path="/programs/create" element={<CreateProgram />} />
             <Route path="/programs/:id" element={<ProgramDetail />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/company-dashboard" element={<CompanyDashboard />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/submit-report/:programId" element={<SubmitReport />} />
             <Route path="*" element={<NotFound />} />

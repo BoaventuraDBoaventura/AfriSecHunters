@@ -15,7 +15,6 @@ import {
   Target, 
   Clock, 
   CheckCircle, 
-  XCircle,
   TrendingUp,
   FileText,
   ArrowRight
@@ -36,11 +35,15 @@ export default function Dashboard() {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (user && profile?.role === 'pentester') {
-      fetchReports();
+    if (user && profile) {
+      if (profile.role === 'company') {
+        navigate('/company-dashboard');
+      } else if (profile.role === 'pentester') {
+        fetchReports();
+      }
     }
     setLoading(false);
-  }, [user, profile]);
+  }, [user, profile, navigate]);
 
   const fetchReports = async () => {
     const { data, error } = await supabase
@@ -86,27 +89,6 @@ export default function Dashboard() {
   const totalEarnings = reports
     .filter(r => r.status === 'paid')
     .reduce((sum, r) => sum + (r.reward_amount || 0), 0);
-
-  // If company, show different dashboard
-  if (profile?.role === 'company') {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-12">
-          <h1 className="text-3xl font-bold mb-8">
-            Dashboard <span className="text-secondary">Empresa</span>
-          </h1>
-          <CyberCard>
-            <p className="text-muted-foreground">Dashboard de empresas em desenvolvimento.</p>
-            <Link to="/programs/create">
-              <Button className="mt-4 bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                Criar Programa
-              </Button>
-            </Link>
-          </CyberCard>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
