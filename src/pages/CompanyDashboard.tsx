@@ -56,6 +56,7 @@ export default function CompanyDashboard() {
   const [selectedReport, setSelectedReport] = useState<ReportWithDetails | null>(null);
   const [actionDialog, setActionDialog] = useState<{ type: 'accept' | 'reject' | 'view' | 'pay'; report: ReportWithDetails } | null>(null);
   const [paymentMethodDialog, setPaymentMethodDialog] = useState<ReportWithDetails | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [rewardAmount, setRewardAmount] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -185,7 +186,8 @@ export default function CompanyDashboard() {
   };
 
   const handlePayWithStripe = async (report: ReportWithDetails) => {
-    if (!report.reward_amount) {
+    const amount = parseFloat(paymentAmount) || report.reward_amount;
+    if (!amount || amount <= 0) {
       toast({ title: 'Erro', description: 'Defina o valor da recompensa primeiro.', variant: 'destructive' });
       return;
     }
@@ -193,10 +195,15 @@ export default function CompanyDashboard() {
     setPaymentProcessing(true);
     setPaymentMethodDialog(null);
     try {
+      // Update reward amount in database first
+      if (amount !== report.reward_amount) {
+        await supabase.from('reports').update({ reward_amount: amount }).eq('id', report.id);
+      }
+
       const { data, error } = await supabase.functions.invoke('create-reward-payment', {
         body: { 
           reportId: report.id, 
-          rewardAmount: report.reward_amount 
+          rewardAmount: amount 
         }
       });
 
@@ -214,7 +221,8 @@ export default function CompanyDashboard() {
   };
 
   const handlePayWithMobileWallet = async (report: ReportWithDetails) => {
-    if (!report.reward_amount) {
+    const amount = parseFloat(paymentAmount) || report.reward_amount;
+    if (!amount || amount <= 0) {
       toast({ title: 'Erro', description: 'Defina o valor da recompensa primeiro.', variant: 'destructive' });
       return;
     }
@@ -233,10 +241,16 @@ export default function CompanyDashboard() {
     setPaymentProcessing(true);
     setPaymentMethodDialog(null);
     try {
+      // Update reward amount in database first
+      if (amount !== report.reward_amount) {
+        await supabase.from('reports').update({ reward_amount: amount }).eq('id', report.id);
+      }
+
       const { data, error } = await supabase.functions.invoke('process-gibrapay-payout', {
         body: { 
           reportId: report.id,
-          directPayment: true
+          directPayment: true,
+          rewardAmount: amount
         }
       });
 
@@ -245,7 +259,7 @@ export default function CompanyDashboard() {
       if (data.success) {
         toast({ 
           title: 'Pagamento enviado!', 
-          description: `Transferência de MZN ${report.reward_amount?.toLocaleString()} iniciada via ${pentesterPayoutMethod.toUpperCase()}.`
+          description: `Transferência de MZN ${amount.toLocaleString()} iniciada via ${pentesterPayoutMethod.toUpperCase()}.`
         });
         fetchData();
       } else {
@@ -257,6 +271,11 @@ export default function CompanyDashboard() {
     } finally {
       setPaymentProcessing(false);
     }
+  };
+
+  const openPaymentDialog = (report: ReportWithDetails) => {
+    setPaymentMethodDialog(report);
+    setPaymentAmount(report.reward_amount?.toString() || '');
   };
 
   if (authLoading || loading) {
@@ -458,7 +477,7 @@ export default function CompanyDashboard() {
                             <Button 
                               size="sm"
                               className="bg-primary text-primary-foreground hover:bg-primary/90"
-                              onClick={() => setPaymentMethodDialog(report)}
+                              onClick={() => openPaymentDialog(report)}
                               disabled={paymentProcessing}
                             >
                               {paymentProcessing ? (
@@ -712,44 +731,75 @@ export default function CompanyDashboard() {
       <Dialog open={!!paymentMethodDialog} onOpenChange={() => setPaymentMethodDialog(null)}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Selecione o Método de Pagamento</DialogTitle>
+            <DialogTitle className="text-foreground">Pagar Recompensa</DialogTitle>
             <DialogDescription>
-              Escolha como deseja pagar a recompensa de MZN {paymentMethodDialog?.reward_amount?.toLocaleString()} 
-              para {paymentMethodDialog?.pentester?.display_name || 'o pentester'}.
+              Pagamento para {paymentMethodDialog?.pentester?.display_name || 'o pentester'}.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-4">
-            <Button 
-              className="w-full justify-start gap-3 h-auto py-4 bg-muted hover:bg-muted/80"
-              variant="ghost"
-              onClick={() => paymentMethodDialog && handlePayWithStripe(paymentMethodDialog)}
-              disabled={paymentProcessing}
-            >
-              <CreditCard className="h-6 w-6 text-primary" />
-              <div className="text-left">
-                <p className="font-medium text-foreground">Pagar via Stripe</p>
-                <p className="text-xs text-muted-foreground">Cartão de crédito/débito internacional</p>
-              </div>
-            </Button>
-            
-            <Button 
-              className="w-full justify-start gap-3 h-auto py-4 bg-muted hover:bg-muted/80"
-              variant="ghost"
-              onClick={() => paymentMethodDialog && handlePayWithMobileWallet(paymentMethodDialog)}
-              disabled={paymentProcessing || !paymentMethodDialog?.pentester?.payout_method || 
-                (paymentMethodDialog?.pentester?.payout_method !== 'mpesa' && paymentMethodDialog?.pentester?.payout_method !== 'emola')}
-            >
-              <Smartphone className="h-6 w-6 text-secondary" />
-              <div className="text-left">
-                <p className="font-medium text-foreground">Carteira Móvel (M-Pesa / E-Mola)</p>
-                <p className="text-xs text-muted-foreground">
-                  {paymentMethodDialog?.pentester?.payout_method === 'mpesa' || paymentMethodDialog?.pentester?.payout_method === 'emola'
-                    ? `Transferência direta via ${paymentMethodDialog.pentester.payout_method.toUpperCase()}`
-                    : 'Pentester não configurou M-Pesa ou E-Mola'}
-                </p>
-              </div>
-            </Button>
+          
+          <div className="space-y-4 py-2">
+            {/* Editable Amount Field */}
+            <div>
+              <label className="text-sm font-medium text-foreground">Valor da Recompensa (MZN)</label>
+              <Input
+                type="number"
+                placeholder="1000"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="mt-1 bg-input border-border"
+                min="50"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Sugerido para {paymentMethodDialog?.severity}: MZN {
+                  paymentMethodDialog?.severity === 'critical' ? paymentMethodDialog?.program?.reward_critical?.toLocaleString() :
+                  paymentMethodDialog?.severity === 'high' ? paymentMethodDialog?.program?.reward_high?.toLocaleString() :
+                  paymentMethodDialog?.severity === 'medium' ? paymentMethodDialog?.program?.reward_medium?.toLocaleString() :
+                  paymentMethodDialog?.program?.reward_low?.toLocaleString()
+                }
+              </p>
+              <p className="text-xs text-primary mt-1">
+                💳 Taxa de plataforma: 10% ({(parseFloat(paymentAmount) * 0.1 || 0).toLocaleString()} MZN)
+              </p>
+            </div>
+
+            {/* Payment Methods */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Método de Pagamento</label>
+              
+              <Button 
+                className="w-full justify-start gap-3 h-auto py-3 bg-muted hover:bg-muted/80"
+                variant="ghost"
+                onClick={() => paymentMethodDialog && handlePayWithStripe(paymentMethodDialog)}
+                disabled={paymentProcessing || !paymentAmount || parseFloat(paymentAmount) < 50}
+              >
+                <CreditCard className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <p className="font-medium text-foreground">Pagar via Stripe</p>
+                  <p className="text-xs text-muted-foreground">Cartão de crédito/débito internacional</p>
+                </div>
+              </Button>
+              
+              <Button 
+                className="w-full justify-start gap-3 h-auto py-3 bg-muted hover:bg-muted/80"
+                variant="ghost"
+                onClick={() => paymentMethodDialog && handlePayWithMobileWallet(paymentMethodDialog)}
+                disabled={paymentProcessing || !paymentAmount || parseFloat(paymentAmount) <= 0 || 
+                  !paymentMethodDialog?.pentester?.payout_method || 
+                  (paymentMethodDialog?.pentester?.payout_method !== 'mpesa' && paymentMethodDialog?.pentester?.payout_method !== 'emola')}
+              >
+                <Smartphone className="h-5 w-5 text-secondary" />
+                <div className="text-left">
+                  <p className="font-medium text-foreground">Carteira Móvel (M-Pesa / E-Mola)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {paymentMethodDialog?.pentester?.payout_method === 'mpesa' || paymentMethodDialog?.pentester?.payout_method === 'emola'
+                      ? `Transferência direta via ${paymentMethodDialog.pentester.payout_method.toUpperCase()}`
+                      : 'Pentester não configurou M-Pesa ou E-Mola'}
+                  </p>
+                </div>
+              </Button>
+            </div>
           </div>
+          
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPaymentMethodDialog(null)}>Cancelar</Button>
           </DialogFooter>
