@@ -726,7 +726,7 @@ export default function CompanyDashboard() {
                     <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span>
                   </div>
                   <p className="text-xs text-muted-foreground italic mt-1">
-                    A dedução de {pentesterDeduction}% fica no saldo GibaPay
+                    💡 Os {pentesterDeduction}% cobrem taxas de transferência e custos operacionais
                   </p>
                 </div>
               </div>
