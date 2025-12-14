@@ -12,6 +12,7 @@ import { AdminFinance } from '@/components/admin/AdminFinance';
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminFilters, DateRange } from '@/components/admin/AdminFilters';
 import { exportToCsv } from '@/lib/exportCsv';
+import { exportToPdf } from '@/lib/exportPdf';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -89,9 +90,11 @@ export default function AdminDashboard() {
   const filteredReports = useMemo(() => filterByDate(reports), [reports, dateRange]);
 
   // Export handlers
-  const handleExport = (type: 'users' | 'programs' | 'reports' | 'all') => {
+  const handleExport = (type: 'users' | 'programs' | 'reports' | 'all', format: 'csv' | 'pdf') => {
+    const exportFn = format === 'csv' ? exportToCsv : exportToPdf;
+    
     if (type === 'users' || type === 'all') {
-      exportToCsv(filteredUsers, 'usuarios', [
+      exportFn(filteredUsers, 'usuarios', [
         { key: 'id', label: 'ID' },
         { key: 'display_name', label: 'Nome' },
         { key: 'role', label: 'Tipo' },
@@ -101,11 +104,11 @@ export default function AdminDashboard() {
         { key: 'rank_title', label: 'Rank' },
         { key: 'is_verified', label: 'Verificado' },
         { key: 'created_at', label: 'Criado em' },
-      ]);
+      ], 'Usuários - AfriSec Hunters');
     }
     
     if (type === 'programs' || type === 'all') {
-      exportToCsv(filteredPrograms, 'programas', [
+      exportFn(filteredPrograms, 'programas', [
         { key: 'id', label: 'ID' },
         { key: 'title', label: 'Título' },
         { key: 'description', label: 'Descrição' },
@@ -115,11 +118,11 @@ export default function AdminDashboard() {
         { key: 'reward_critical', label: 'Recompensa Critical' },
         { key: 'is_active', label: 'Ativo' },
         { key: 'created_at', label: 'Criado em' },
-      ]);
+      ], 'Programas - AfriSec Hunters');
     }
     
     if (type === 'reports' || type === 'all') {
-      exportToCsv(filteredReports, 'relatorios', [
+      exportFn(filteredReports, 'relatorios', [
         { key: 'id', label: 'ID' },
         { key: 'title', label: 'Título' },
         { key: 'vulnerability_type', label: 'Tipo' },
@@ -127,10 +130,10 @@ export default function AdminDashboard() {
         { key: 'status', label: 'Status' },
         { key: 'reward_amount', label: 'Recompensa' },
         { key: 'created_at', label: 'Criado em' },
-      ]);
+      ], 'Relatórios - AfriSec Hunters');
     }
     
-    toast({ title: 'Exportado!', description: 'Arquivo CSV baixado com sucesso.' });
+    toast({ title: 'Exportado!', description: `Arquivo ${format.toUpperCase()} baixado com sucesso.` });
   };
 
   const handleDeleteUser = async (userId: string) => {

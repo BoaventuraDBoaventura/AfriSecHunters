@@ -5,6 +5,7 @@ import { DollarSign, TrendingUp, FileText, Download, Percent, Users } from 'luci
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/lib/exportCsv';
+import { exportToPdf } from '@/lib/exportPdf';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
@@ -91,17 +92,24 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
       return acc;
     }, []);
 
-  const handleExport = () => {
-    exportToCsv(transactions, 'transacoes', [
-      { key: 'id', label: 'ID' },
-      { key: 'report_id', label: 'Report ID' },
-      { key: 'gross_amount', label: 'Valor Bruto (MZN)' },
-      { key: 'platform_fee', label: 'Comissão (MZN)' },
-      { key: 'net_amount', label: 'Valor Líquido (MZN)' },
-      { key: 'status', label: 'Status' },
-      { key: 'created_at', label: 'Data' },
-    ]);
+  const transactionColumns = [
+    { key: 'id' as const, label: 'ID' },
+    { key: 'report_id' as const, label: 'Report ID' },
+    { key: 'gross_amount' as const, label: 'Valor Bruto (MZN)' },
+    { key: 'platform_fee' as const, label: 'Comissão (MZN)' },
+    { key: 'net_amount' as const, label: 'Valor Líquido (MZN)' },
+    { key: 'status' as const, label: 'Status' },
+    { key: 'created_at' as const, label: 'Data' },
+  ];
+
+  const handleExportCsv = () => {
+    exportToCsv(transactions, 'transacoes', transactionColumns);
     toast({ title: 'Exportado!', description: 'CSV de transações baixado.' });
+  };
+
+  const handleExportPdf = () => {
+    exportToPdf(transactions, 'transacoes', transactionColumns, 'Transações - AfriSec Hunters');
+    toast({ title: 'Exportado!', description: 'PDF de transações baixado.' });
   };
 
   if (loading) {
@@ -207,10 +215,16 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
               <FileText className="h-5 w-5 text-primary" />
               Histórico de Transações
             </h3>
-            <Button variant="outline" size="sm" onClick={handleExport} className="border-primary text-primary hover:bg-primary/10">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportCsv} className="border-primary text-primary hover:bg-primary/10">
+                <Download className="h-4 w-4 mr-2" />
+                CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPdf} className="border-secondary text-secondary hover:bg-secondary/10">
+                <Download className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
+            </div>
           </div>
 
           {transactions.length === 0 ? (
