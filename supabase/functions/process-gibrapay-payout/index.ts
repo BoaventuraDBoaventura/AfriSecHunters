@@ -23,19 +23,18 @@ function cleanPhoneNumber(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
 }
 
-async function makeGibrapayTransfer(
+// Use /v1/withdraw to SEND money from GibaPay wallet to a phone number
+async function makeGibrapayWithdraw(
   apiKey: string,
   walletId: string,
   phoneNumber: string,
-  amount: number,
-  reference: string
+  amount: number
 ): Promise<GibrapayTransferResponse> {
-  // Clean the phone number before sending to API
   const cleanedPhone = cleanPhoneNumber(phoneNumber);
-  logStep("Making GibaPay transfer", { phoneNumber: cleanedPhone, amount, reference });
+  logStep("Making GibaPay WITHDRAW", { phoneNumber: cleanedPhone, amount });
   
   try {
-    const response = await fetch("https://gibrapay.online/v1/transfer", {
+    const response = await fetch("https://gibrapay.online/v1/withdraw", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,7 +48,7 @@ async function makeGibrapayTransfer(
     });
 
     const data = await response.json();
-    logStep("GibaPay response", { status: response.status, data });
+    logStep("GibaPay withdraw response", { status: response.status, data });
 
     // GibaPay API returns:
     // - Root level "status": "success" or "error"
@@ -62,14 +61,14 @@ async function makeGibrapayTransfer(
       return {
         success: true,
         transaction_id: data.data?.id,
-        message: data.message || "Transferência realizada com sucesso",
+        message: data.message || "Saque realizado com sucesso",
       };
     }
 
     // Return appropriate error message
     const errorMessage = data.data?.status === "failed" 
-      ? "Transferência falhou" 
-      : (data.message || data.error || "Transfer failed");
+      ? "Saque falhou" 
+      : (data.message || data.error || "Withdraw failed");
 
     return {
       success: false,
@@ -77,7 +76,7 @@ async function makeGibrapayTransfer(
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logStep("GibaPay transfer error", { error: errorMsg });
+    logStep("GibaPay withdraw error", { error: errorMsg });
     return {
       success: false,
       error: errorMsg || "Network error",
@@ -251,27 +250,23 @@ serve(async (req) => {
       }
     }
     
-    // Transfer to pentester (reward minus deduction)
-    const pentesterReference = `REP-${reportId.slice(0, 8)}-PENT`;
-    const pentesterTransfer = await makeGibrapayTransfer(
+    // Use /v1/withdraw to SEND money to pentester (reward minus deduction)
+    const pentesterTransfer = await makeGibrapayWithdraw(
       gibrapayApiKey,
       gibrapayWalletId,
       phoneNumber,
-      pentesterReceives,
-      pentesterReference
+      pentesterReceives
     );
 
     let platformTransfer: GibrapayTransferResponse = { success: true };
     
-    // Transfer platform fee to platform's M-Pesa (the fee added on top)
+    // Use /v1/withdraw to SEND platform fee to platform's M-Pesa
     if (platformMpesaNumber && platformFee > 0) {
-      const platformReference = `REP-${reportId.slice(0, 8)}-PLAT`;
-      platformTransfer = await makeGibrapayTransfer(
+      platformTransfer = await makeGibrapayWithdraw(
         gibrapayApiKey,
         gibrapayWalletId,
         platformMpesaNumber,
-        platformFee,
-        platformReference
+        platformFee
       );
     }
     
