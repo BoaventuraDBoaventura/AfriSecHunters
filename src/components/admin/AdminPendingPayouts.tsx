@@ -259,19 +259,19 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
     setSelectedPayout(null);
   };
 
-  // Handle confirming a deposit and triggering payout to pentester
+  // Handle confirming a deposit (pentester will be paid manually later)
   const handleConfirmDeposit = (payout: PendingPayout) => {
     setSelectedPayout(payout);
     setIsDepositConfirmOpen(true);
   };
 
-  const confirmDepositAndPay = async () => {
+  const confirmDepositOnly = async () => {
     if (!selectedPayout) return;
     
     setIsProcessing(true);
     
     try {
-      // First, update deposit status to confirmed
+      // Update deposit status to confirmed (pentester payment is done manually later)
       const { error: updateError } = await supabase
         .from('platform_transactions')
         .update({
@@ -283,53 +283,16 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
 
       if (updateError) throw updateError;
 
-      // Trigger GibaPay transfer to pentester
-      const pentesterPhone = selectedPayout.pentester?.payout_details?.phone_number || selectedPayout.phone_number;
-      
-      if (pentesterPhone && (selectedPayout.pentester?.payout_method === 'mpesa' || selectedPayout.pentester?.payout_method === 'emola')) {
-        const { data, error } = await supabase.functions.invoke('process-gibrapay-payout', {
-          body: { 
-            reportId: selectedPayout.report_id,
-            transactionId: selectedPayout.id,
-            phoneNumber: pentesterPhone,
-            walletType: selectedPayout.wallet_type || selectedPayout.pentester?.payout_method
-          }
-        });
-
-        if (error) {
-          console.error('GibaPay error:', error);
-          toast({
-            title: 'Depósito Confirmado',
-            description: 'Depósito confirmado, mas houve erro na transferência automática. Tente novamente.',
-            variant: 'destructive',
-          });
-        } else if (data?.success) {
-          // Also update report status to paid
-          await supabase.from('reports').update({ status: 'paid' }).eq('id', selectedPayout.report_id);
-          
-          toast({
-            title: 'Sucesso!',
-            description: `Depósito confirmado e pagamento de MZN ${Number(selectedPayout.net_amount).toLocaleString()} enviado ao pentester.`,
-          });
-        } else {
-          toast({
-            title: 'Depósito Confirmado',
-            description: `Transferência automática falhou: ${data?.error}. Pode tentar novamente.`,
-            variant: 'destructive',
-          });
-        }
-      } else {
-        toast({
-          title: 'Depósito Confirmado',
-          description: 'O pagamento ao pentester requer transferência manual (banco ou PayPal).',
-        });
-      }
+      toast({
+        title: 'Depósito Confirmado!',
+        description: `Depósito de MZN ${Number(selectedPayout.gross_amount).toLocaleString()} confirmado. Faça o pagamento manual ao pentester.`,
+      });
       
       fetchPayouts();
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível processar.',
+        description: error.message || 'Não foi possível confirmar o depósito.',
         variant: 'destructive',
       });
     }
@@ -892,11 +855,11 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
               Cancelar
             </Button>
             <Button 
-              onClick={confirmDepositAndPay} 
+              onClick={confirmDepositOnly} 
               disabled={isProcessing}
               className="bg-secondary hover:bg-secondary/80"
             >
-              {isProcessing ? 'Processando...' : 'Confirmar e Pagar'}
+              {isProcessing ? 'Processando...' : 'Confirmar Depósito'}
             </Button>
           </DialogFooter>
         </DialogContent>
