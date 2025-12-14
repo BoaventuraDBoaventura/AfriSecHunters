@@ -702,33 +702,26 @@ export default function CompanyDashboard() {
                 }
               </p>
               
-              {/* Payment breakdown */}
-              <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border space-y-1">
+              {/* Payment breakdown - Company Payment (MAIN) */}
+              <div className="mt-3 p-4 bg-primary/10 rounded-lg border-2 border-primary space-y-2">
+                <p className="text-xs text-muted-foreground uppercase font-semibold">Valor a Pagar pela Empresa</p>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Recompensa definida:</span>
-                  <span className="text-foreground font-medium">MZN {(parseFloat(paymentAmount) || 0).toLocaleString()}</span>
+                  <span className="text-foreground">Recompensa:</span>
+                  <span className="text-foreground">MZN {(parseFloat(paymentAmount) || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Taxa plataforma ({platformFee}%):</span>
-                  <span className="text-muted-foreground">+ MZN {(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()}</span>
+                  <span className="text-foreground">Taxa plataforma ({platformFee}%):</span>
+                  <span className="text-foreground">+ MZN {(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-sm font-semibold border-t border-border pt-1 mt-1">
-                  <span className="text-foreground">Total a cobrar da empresa:</span>
+                <div className="flex justify-between text-lg font-bold border-t border-primary/30 pt-2 mt-2">
+                  <span className="text-primary">TOTAL A PAGAR:</span>
                   <span className="text-primary">MZN {((parseFloat(paymentAmount) || 0) + (parseFloat(paymentAmount) * platformFee / 100 || 0)).toLocaleString()}</span>
                 </div>
-                <div className="border-t border-border pt-2 mt-2 space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Dedução do pentester ({pentesterDeduction}%):</span>
-                    <span className="text-muted-foreground">- MZN {(parseFloat(paymentAmount) * pentesterDeduction / 100 || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-success">Pentester recebe:</span>
-                    <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic mt-1">
-                    💡 Os {pentesterDeduction}% cobrem taxas de transferência e custos operacionais
-                  </p>
-                </div>
+              </div>
+
+              {/* Info about pentester (secondary, smaller) */}
+              <div className="mt-2 p-2 bg-muted/30 rounded border border-border text-xs text-muted-foreground">
+                <p>ℹ️ O pentester receberá <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span> após dedução de {pentesterDeduction}% para taxas de transferência.</p>
               </div>
             </div>
 
