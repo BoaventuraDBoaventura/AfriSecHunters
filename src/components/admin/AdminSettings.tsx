@@ -3,15 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, Loader2, Save, Percent } from 'lucide-react';
-
-interface PlatformSetting {
-  id: string;
-  setting_key: string;
-  setting_value: string;
-  description: string | null;
-  updated_at: string;
-}
+import { Settings, Loader2, Save, Percent, Phone } from 'lucide-react';
 
 export function AdminSettings() {
   const { toast } = useToast();
@@ -19,6 +11,8 @@ export function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [platformFee, setPlatformFee] = useState('10');
   const [originalFee, setOriginalFee] = useState('10');
+  const [platformPhone, setPlatformPhone] = useState('');
+  const [originalPhone, setOriginalPhone] = useState('');
 
   useEffect(() => {
     fetchSettings();
@@ -30,17 +24,29 @@ export function AdminSettings() {
       const { data, error } = await supabase
         .from('platform_settings')
         .select('*')
-        .eq('setting_key', 'platform_fee_percentage')
-        .single();
+        .in('setting_key', ['platform_fee_percentage', 'platform_mpesa_number']);
 
       if (error) throw error;
 
       if (data) {
-        const feeValue = typeof data.setting_value === 'string' 
-          ? data.setting_value 
-          : String(data.setting_value);
-        setPlatformFee(feeValue);
-        setOriginalFee(feeValue);
+        const feeSetting = data.find(d => d.setting_key === 'platform_fee_percentage');
+        const phoneSetting = data.find(d => d.setting_key === 'platform_mpesa_number');
+        
+        if (feeSetting) {
+          const feeValue = typeof feeSetting.setting_value === 'string' 
+            ? feeSetting.setting_value 
+            : String(feeSetting.setting_value);
+          setPlatformFee(feeValue);
+          setOriginalFee(feeValue);
+        }
+        
+        if (phoneSetting) {
+          const phoneValue = typeof phoneSetting.setting_value === 'string' 
+            ? phoneSetting.setting_value.replace(/"/g, '') 
+            : String(phoneSetting.setting_value).replace(/"/g, '');
+          setPlatformPhone(phoneValue);
+          setOriginalPhone(phoneValue);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -66,9 +72,19 @@ export function AdminSettings() {
       return;
     }
 
+    if (!platformPhone || !/^258\d{9}$/.test(platformPhone)) {
+      toast({ 
+        title: 'Erro', 
+        description: 'O número de telefone deve estar no formato 258XXXXXXXXX (12 dígitos).', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      const { error } = await supabase
+      // Update platform fee
+      const { error: feeError } = await supabase
         .from('platform_settings')
         .update({ 
           setting_value: platformFee,
@@ -76,12 +92,24 @@ export function AdminSettings() {
         })
         .eq('setting_key', 'platform_fee_percentage');
 
-      if (error) throw error;
+      if (feeError) throw feeError;
+
+      // Update platform phone
+      const { error: phoneError } = await supabase
+        .from('platform_settings')
+        .update({ 
+          setting_value: `"${platformPhone}"`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('setting_key', 'platform_mpesa_number');
+
+      if (phoneError) throw phoneError;
 
       setOriginalFee(platformFee);
+      setOriginalPhone(platformPhone);
       toast({ 
         title: 'Sucesso', 
-        description: `Taxa da plataforma atualizada para ${platformFee}%.` 
+        description: 'Configurações atualizadas com sucesso.' 
       });
     } catch (error: any) {
       console.error('Error saving settings:', error);
@@ -95,7 +123,7 @@ export function AdminSettings() {
     }
   };
 
-  const hasChanges = platformFee !== originalFee;
+  const hasChanges = platformFee !== originalFee || platformPhone !== originalPhone;
 
   if (loading) {
     return (
@@ -144,6 +172,30 @@ export function AdminSettings() {
               <li>Pentester recebe: MZN {(1000 * (1 - parseFloat(platformFee || '0') / 100)).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</li>
               <li>Plataforma recebe: MZN {(1000 * parseFloat(platformFee || '0') / 100).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</li>
             </ul>
+          </div>
+        </div>
+
+        {/* Platform Phone Number Setting */}
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <div className="flex items-center gap-2 mb-3">
+            <Phone className="h-5 w-5 text-primary" />
+            <h3 className="font-medium text-foreground">Número de Comissões</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Número de telefone M-Pesa/E-Mola onde as comissões da plataforma serão recebidas automaticamente.
+          </p>
+          <div className="flex items-center gap-3">
+            <Input
+              type="text"
+              placeholder="258XXXXXXXXX"
+              value={platformPhone}
+              onChange={(e) => setPlatformPhone(e.target.value.replace(/\D/g, ''))}
+              className="bg-input border-border"
+              maxLength={12}
+            />
+          </div>
+          <div className="mt-3 text-xs text-muted-foreground">
+            <p>Formato: 258 + 9 dígitos (ex: 258840123456)</p>
           </div>
         </div>
 

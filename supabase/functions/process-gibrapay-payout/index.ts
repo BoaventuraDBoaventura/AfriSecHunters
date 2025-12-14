@@ -79,7 +79,6 @@ serve(async (req) => {
 
     const gibrapayApiKey = Deno.env.get("GIBRAPAY_API_KEY");
     const gibrapayWalletId = Deno.env.get("GIBRAPAY_WALLET_ID");
-    const platformMpesaNumber = Deno.env.get("PLATFORM_MPESA_NUMBER");
 
     if (!gibrapayApiKey || !gibrapayWalletId) {
       throw new Error("GibaPay credentials not configured");
@@ -90,6 +89,13 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+
+    // Fetch platform phone number from database
+    const { data: platformPhoneData } = await supabaseClient
+      .rpc('get_platform_mpesa_number');
+    
+    const platformMpesaNumber = platformPhoneData || Deno.env.get("PLATFORM_MPESA_NUMBER");
+    logStep("Platform phone number", { source: platformPhoneData ? 'database' : 'env', hasNumber: !!platformMpesaNumber });
 
     const { reportId, transactionId, directPayment, phoneNumber: providedPhoneNumber, walletType, rewardAmount: providedRewardAmount } = await req.json();
     logStep("Processing payout", { reportId, transactionId, directPayment, providedPhoneNumber: providedPhoneNumber ? providedPhoneNumber.slice(-4) : null, walletType });

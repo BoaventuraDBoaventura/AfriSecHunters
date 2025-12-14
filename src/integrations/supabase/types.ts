@@ -474,6 +474,7 @@ export type Database = {
       get_hunter_monthly_stats: { Args: { hunter_id: string }; Returns: Json }
       get_hunter_public_stats: { Args: { hunter_id: string }; Returns: Json }
       get_platform_fee: { Args: never; Returns: number }
+      get_platform_mpesa_number: { Args: never; Returns: string }
       get_platform_stats: { Args: never; Returns: Json }
       get_rank_title: { Args: { points: number }; Returns: string }
       has_role: {
