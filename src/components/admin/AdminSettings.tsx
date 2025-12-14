@@ -3,7 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, Loader2, Save, Percent, Phone } from 'lucide-react';
+import { Settings, Loader2, Save, Percent, Phone, Wallet, RefreshCw } from 'lucide-react';
+
+interface GibrapayBalance {
+  success: boolean;
+  name?: string;
+  balance?: number;
+  statistics?: {
+    total_transactions?: number;
+    total_amount?: number;
+  };
+  error?: string;
+}
 
 export function AdminSettings() {
   const { toast } = useToast();
@@ -13,10 +24,29 @@ export function AdminSettings() {
   const [originalFee, setOriginalFee] = useState('10');
   const [platformPhone, setPlatformPhone] = useState('');
   const [originalPhone, setOriginalPhone] = useState('');
+  const [gibrapayData, setGibrapayData] = useState<GibrapayBalance | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
 
   useEffect(() => {
     fetchSettings();
+    fetchGibrapayBalance();
   }, []);
+
+  const fetchGibrapayBalance = async () => {
+    setLoadingBalance(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-gibrapay-balance');
+      
+      if (error) throw error;
+      
+      setGibrapayData(data);
+    } catch (error: any) {
+      console.error('Error fetching GibaPay balance:', error);
+      setGibrapayData({ success: false, error: 'Não foi possível obter o saldo.' });
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -141,6 +171,62 @@ export function AdminSettings() {
       </div>
 
       <div className="grid gap-6 max-w-md">
+        {/* GibaPay Balance */}
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-primary" />
+              <h3 className="font-medium text-foreground">Saldo GibaPay</h3>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchGibrapayBalance}
+              disabled={loadingBalance}
+            >
+              <RefreshCw className={`h-4 w-4 ${loadingBalance ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+          
+          {loadingBalance ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : gibrapayData?.success ? (
+            <div className="space-y-3">
+              {gibrapayData.name && (
+                <p className="text-sm text-muted-foreground">
+                  Carteira: <span className="text-foreground">{gibrapayData.name}</span>
+                </p>
+              )}
+              <div className="text-center py-2">
+                <p className="text-sm text-muted-foreground mb-1">Saldo Disponível</p>
+                <p className="text-2xl font-bold text-primary">
+                  MZN {(gibrapayData.balance || 0).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              {gibrapayData.statistics && (
+                <div className="text-xs text-muted-foreground border-t border-border pt-2 mt-2">
+                  <p>Transações: {gibrapayData.statistics.total_transactions || 0}</p>
+                  <p>Total movimentado: MZN {(gibrapayData.statistics.total_amount || 0).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-destructive">{gibrapayData?.error || 'Erro ao carregar saldo'}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchGibrapayBalance}
+                className="mt-2"
+              >
+                Tentar Novamente
+              </Button>
+            </div>
+          )}
+        </div>
+
         {/* Platform Fee Setting */}
         <div className="p-4 rounded-lg border border-border bg-card">
           <div className="flex items-center gap-2 mb-3">
