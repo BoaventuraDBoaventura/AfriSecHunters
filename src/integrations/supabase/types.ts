@@ -350,6 +350,41 @@ export type Database = {
           },
         ]
       }
+      rank_certificates: {
+        Row: {
+          certificate_code: string
+          id: string
+          issued_at: string
+          pentester_id: string
+          points_at_issue: number
+          rank_title: string
+        }
+        Insert: {
+          certificate_code: string
+          id?: string
+          issued_at?: string
+          pentester_id: string
+          points_at_issue: number
+          rank_title: string
+        }
+        Update: {
+          certificate_code?: string
+          id?: string
+          issued_at?: string
+          pentester_id?: string
+          points_at_issue?: number
+          rank_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rank_certificates_pentester_id_fkey"
+            columns: ["pentester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_status_history: {
         Row: {
           changed_by: string
@@ -486,6 +521,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_certificate_code: { Args: never; Returns: string }
       get_hunter_monthly_stats: { Args: { hunter_id: string }; Returns: Json }
       get_hunter_public_stats: { Args: { hunter_id: string }; Returns: Json }
       get_pentester_deduction: { Args: never; Returns: number }

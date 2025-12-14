@@ -6,6 +6,7 @@ import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, Report, SeverityLevel } from '@/types/database';
+import { CertificateCard } from '@/components/certificates/CertificateCard';
 import { 
   User, 
   Trophy, 
@@ -23,7 +24,8 @@ import {
   Eye,
   ArrowLeft,
   ExternalLink,
-  TrendingUp
+  TrendingUp,
+  ScrollText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -46,6 +48,15 @@ interface MonthlyStats {
   low: number;
 }
 
+interface Certificate {
+  id: string;
+  pentester_id: string;
+  rank_title: string;
+  points_at_issue: number;
+  issued_at: string;
+  certificate_code: string;
+}
+
 export default function PublicProfile() {
   const { id } = useParams();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -55,6 +66,7 @@ export default function PublicProfile() {
     severityCounts: Record<SeverityLevel, number>;
   } | null>(null);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -102,6 +114,17 @@ export default function PublicProfile() {
             month: new Date(item.month + '-01').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
           }));
         setMonthlyStats(formatted);
+      }
+
+      // Fetch certificates
+      const { data: certData } = await supabase
+        .from('rank_certificates')
+        .select('*')
+        .eq('pentester_id', id)
+        .order('issued_at', { ascending: false });
+
+      if (certData) {
+        setCertificates(certData as Certificate[]);
       }
     }
     setLoading(false);
@@ -489,6 +512,29 @@ export default function PublicProfile() {
                 ))}
               </div>
             </CyberCard>
+
+            {/* Certificates */}
+            {certificates.length > 0 && (
+              <CyberCard>
+                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                  <ScrollText className="h-5 w-5 text-primary" />
+                  Certificados de Ranking
+                </h2>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {certificates.map((cert) => (
+                    <CertificateCard
+                      key={cert.id}
+                      id={cert.id}
+                      pentesterName={profile.display_name || 'Hunter'}
+                      rankTitle={cert.rank_title}
+                      points={cert.points_at_issue}
+                      issuedAt={cert.issued_at}
+                      certificateCode={cert.certificate_code}
+                    />
+                  ))}
+                </div>
+              </CyberCard>
+            )}
           </div>
 
           {/* Right Column */}

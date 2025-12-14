@@ -6,6 +6,7 @@ import { CyberCard } from '@/components/ui/CyberCard';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReportFilters } from '@/components/reports/ReportFilters';
+import { CertificateCard } from '@/components/certificates/CertificateCard';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Report, Program, Profile, SeverityLevel, ReportStatus } from '@/types/database';
@@ -19,10 +20,20 @@ import {
   CheckCircle, 
   TrendingUp,
   FileText,
-  ArrowRight
+  ArrowRight,
+  ScrollText
 } from 'lucide-react';
 
 type ReportWithProgram = Report & { program: Program & { company: Profile } };
+
+interface Certificate {
+  id: string;
+  pentester_id: string;
+  rank_title: string;
+  points_at_issue: number;
+  issued_at: string;
+  certificate_code: string;
+}
 
 const SEVERITY_ORDER: Record<SeverityLevel, number> = {
   critical: 4,
@@ -35,6 +46,7 @@ export default function Dashboard() {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportWithProgram[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter states
@@ -55,10 +67,23 @@ export default function Dashboard() {
         navigate('/company-dashboard');
       } else if (profile.role === 'pentester') {
         fetchReports();
+        fetchCertificates();
       }
     }
     setLoading(false);
   }, [user, profile, navigate]);
+
+  const fetchCertificates = async () => {
+    const { data } = await supabase
+      .from('rank_certificates')
+      .select('*')
+      .eq('pentester_id', user?.id)
+      .order('issued_at', { ascending: false });
+
+    if (data) {
+      setCertificates(data as Certificate[]);
+    }
+  };
 
   const fetchReports = async () => {
     const { data, error } = await supabase
@@ -346,6 +371,37 @@ export default function Dashboard() {
                 </Button>
               </Link>
             </CyberCard>
+
+            {/* Certificates Section */}
+            {certificates.length > 0 && (
+              <CyberCard>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <ScrollText className="h-5 w-5 text-primary" />
+                  Meus Certificados
+                </h3>
+                <div className="space-y-3">
+                  {certificates.slice(0, 3).map((cert) => (
+                    <CertificateCard
+                      key={cert.id}
+                      id={cert.id}
+                      pentesterName={profile?.display_name || 'Hunter'}
+                      rankTitle={cert.rank_title}
+                      points={cert.points_at_issue}
+                      issuedAt={cert.issued_at}
+                      certificateCode={cert.certificate_code}
+                      compact
+                    />
+                  ))}
+                </div>
+                {certificates.length > 3 && (
+                  <Link to={`/hunters/${user?.id}`}>
+                    <Button variant="ghost" className="w-full mt-3 text-primary hover:bg-primary/10">
+                      Ver todos ({certificates.length})
+                    </Button>
+                  </Link>
+                )}
+              </CyberCard>
+            )}
 
             {/* Quick Actions */}
             <CyberCard>
