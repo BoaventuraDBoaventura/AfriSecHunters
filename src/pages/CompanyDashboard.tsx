@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout/Layout';
 import { CyberCard } from '@/components/ui/CyberCard';
@@ -10,7 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Report, Program, Profile, ReportStatus } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  Building2, 
   DollarSign, 
   Bug, 
   FileText,
@@ -21,8 +20,6 @@ import {
   Eye,
   TrendingUp,
   Shield,
-  Users,
-  CreditCard,
   Loader2,
   Pencil,
   Archive,
@@ -48,7 +45,7 @@ export default function CompanyDashboard() {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
+  
   
   const [programs, setPrograms] = useState<Program[]>([]);
   const [reports, setReports] = useState<ReportWithDetails[]>([]);
@@ -76,41 +73,6 @@ export default function CompanyDashboard() {
     }
   }, [user, profile]);
 
-  // Handle payment callback from Stripe
-  useEffect(() => {
-    const paymentStatus = searchParams.get('payment');
-    const reportId = searchParams.get('report');
-    
-    if (paymentStatus === 'success' && reportId) {
-      verifyPayment(reportId);
-      // Clear the URL params
-      setSearchParams({});
-    } else if (paymentStatus === 'cancelled') {
-      toast({ title: 'Pagamento cancelado', description: 'O pagamento foi cancelado.' });
-      setSearchParams({});
-    }
-  }, [searchParams]);
-
-  const verifyPayment = async (reportId: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-payment', {
-        body: { reportId }
-      });
-
-      if (error) throw error;
-
-      if (data.paid) {
-        toast({ 
-          title: 'Pagamento confirmado!', 
-          description: `Recompensa de MZN ${data.rewardAmount?.toLocaleString()} processada com sucesso.` 
-        });
-        fetchData();
-      }
-    } catch (error: any) {
-      console.error('Error verifying payment:', error);
-      toast({ title: 'Erro', description: 'Erro ao verificar pagamento.', variant: 'destructive' });
-    }
-  };
 
   const fetchData = async () => {
     // Fetch programs
@@ -187,40 +149,6 @@ export default function CompanyDashboard() {
     setRejectionReason('');
   };
 
-  const handlePayWithStripe = async (report: ReportWithDetails) => {
-    const amount = parseFloat(paymentAmount) || report.reward_amount;
-    if (!amount || amount <= 0) {
-      toast({ title: 'Erro', description: 'Defina o valor da recompensa primeiro.', variant: 'destructive' });
-      return;
-    }
-
-    setPaymentProcessing(true);
-    setPaymentMethodDialog(null);
-    try {
-      // Update reward amount in database first
-      if (amount !== report.reward_amount) {
-        await supabase.from('reports').update({ reward_amount: amount }).eq('id', report.id);
-      }
-
-      const { data, error } = await supabase.functions.invoke('create-reward-payment', {
-        body: { 
-          reportId: report.id, 
-          rewardAmount: amount 
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error: any) {
-      console.error('Error creating payment:', error);
-      toast({ title: 'Erro', description: error.message || 'Erro ao criar pagamento.', variant: 'destructive' });
-    } finally {
-      setPaymentProcessing(false);
-    }
-  };
 
   const handlePayWithMobileWallet = async (report: ReportWithDetails) => {
     const amount = parseFloat(paymentAmount) || report.reward_amount;
@@ -482,7 +410,7 @@ export default function CompanyDashboard() {
                               {paymentProcessing ? (
                                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                               ) : (
-                                <CreditCard className="h-4 w-4 mr-1" />
+                                <Smartphone className="h-4 w-4 mr-1" />
                               )}
                               Pagar
                             </Button>
@@ -761,22 +689,9 @@ export default function CompanyDashboard() {
               </p>
             </div>
 
-            {/* Payment Methods */}
+            {/* Payment Method - Mobile Wallet Only */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Método de Pagamento</label>
-              
-              <Button 
-                className="w-full justify-start gap-3 h-auto py-3 bg-muted hover:bg-muted/80"
-                variant="ghost"
-                onClick={() => paymentMethodDialog && handlePayWithStripe(paymentMethodDialog)}
-                disabled={paymentProcessing || !paymentAmount || parseFloat(paymentAmount) < 50}
-              >
-                <CreditCard className="h-5 w-5 text-primary" />
-                <div className="text-left">
-                  <p className="font-medium text-foreground">Pagar via Stripe</p>
-                  <p className="text-xs text-muted-foreground">Cartão de crédito/débito internacional</p>
-                </div>
-              </Button>
               
               <div className="p-4 border border-border rounded-lg space-y-3">
                 <div className="flex items-center gap-2">
