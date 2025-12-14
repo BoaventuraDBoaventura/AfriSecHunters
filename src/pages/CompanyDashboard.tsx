@@ -61,6 +61,7 @@ export default function CompanyDashboard() {
   const [processing, setProcessing] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [platformFee, setPlatformFee] = useState(10); // Default 10%
+  const [pentesterDeduction, setPentesterDeduction] = useState(20); // Default 20%
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -71,18 +72,22 @@ export default function CompanyDashboard() {
   useEffect(() => {
     if (user && profile?.role === 'company') {
       fetchData();
-      fetchPlatformFee();
+      fetchPlatformSettings();
     }
   }, [user, profile]);
 
-  const fetchPlatformFee = async () => {
+  const fetchPlatformSettings = async () => {
     try {
-      const { data } = await supabase.rpc('get_platform_fee');
-      if (data) {
-        setPlatformFee(parseFloat(String(data)));
+      const { data: feeData } = await supabase.rpc('get_platform_fee');
+      if (feeData) {
+        setPlatformFee(parseFloat(String(feeData)));
+      }
+      const { data: deductionData } = await supabase.rpc('get_pentester_deduction');
+      if (deductionData) {
+        setPentesterDeduction(parseFloat(String(deductionData)));
       }
     } catch (error) {
-      console.error('Error fetching platform fee:', error);
+      console.error('Error fetching platform settings:', error);
     }
   };
 
@@ -700,16 +705,29 @@ export default function CompanyDashboard() {
               {/* Payment breakdown */}
               <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pentester recebe:</span>
-                  <span className="text-success font-medium">MZN {(parseFloat(paymentAmount) || 0).toLocaleString()}</span>
+                  <span className="text-muted-foreground">Recompensa definida:</span>
+                  <span className="text-foreground font-medium">MZN {(parseFloat(paymentAmount) || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Taxa plataforma ({platformFee}%):</span>
-                  <span className="text-muted-foreground">MZN {(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()}</span>
+                  <span className="text-muted-foreground">+ MZN {(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm font-semibold border-t border-border pt-1 mt-1">
-                  <span className="text-foreground">Total a ser transferido:</span>
+                  <span className="text-foreground">Total a cobrar da empresa:</span>
                   <span className="text-primary">MZN {((parseFloat(paymentAmount) || 0) + (parseFloat(paymentAmount) * platformFee / 100 || 0)).toLocaleString()}</span>
+                </div>
+                <div className="border-t border-border pt-2 mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Dedução do pentester ({pentesterDeduction}%):</span>
+                    <span className="text-muted-foreground">- MZN {(parseFloat(paymentAmount) * pentesterDeduction / 100 || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-success">Pentester recebe:</span>
+                    <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic mt-1">
+                    A dedução de {pentesterDeduction}% fica no saldo GibaPay
+                  </p>
                 </div>
               </div>
             </div>
