@@ -166,8 +166,15 @@ serve(async (req) => {
       throw new Error("Número de telefone não fornecido");
     }
 
+    // Fetch platform fee from database
+    const { data: feeData } = await supabaseClient
+      .rpc('get_platform_fee');
+    
+    const platformFeePercentage = feeData ? parseFloat(String(feeData)) / 100 : 0.10;
+    logStep("Platform fee fetched", { percentage: platformFeePercentage * 100 });
+
     const grossAmount = effectiveRewardAmount || 0;
-    const platformFee = Math.round(grossAmount * 0.10 * 100) / 100; // 10% commission
+    const platformFee = Math.round(grossAmount * platformFeePercentage * 100) / 100;
     const netAmount = Math.round((grossAmount - platformFee) * 100) / 100;
 
     logStep("Calculated amounts", { grossAmount, platformFee, netAmount });
