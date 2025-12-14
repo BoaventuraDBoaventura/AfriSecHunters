@@ -98,10 +98,10 @@ export default function CertificateVerification() {
     setLoading(false);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!certificate) return;
     
-    generateCertificatePdf({
+    await generateCertificatePdf({
       pentesterName: certificate.pentester?.display_name || 'Hunter',
       rankTitle: certificate.rank_title,
       points: certificate.points_at_issue,
