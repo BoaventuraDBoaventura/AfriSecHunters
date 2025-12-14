@@ -170,7 +170,7 @@ export function AdminSettings() {
         <h2 className="text-xl font-semibold text-foreground">Configurações da Plataforma</h2>
       </div>
 
-      <div className="grid gap-6 max-w-md">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* GibaPay Balance */}
         <div className="p-4 rounded-lg border border-border bg-card">
           <div className="flex items-center justify-between mb-3">
