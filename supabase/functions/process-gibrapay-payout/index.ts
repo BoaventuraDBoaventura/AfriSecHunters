@@ -51,20 +51,29 @@ async function makeGibrapayTransfer(
     const data = await response.json();
     logStep("GibaPay response", { status: response.status, data });
 
-    // GibaPay returns status: "success" in data.status field
-    const isSuccess = response.ok && data.status === "success";
+    // GibaPay API returns:
+    // - Root level "status": "success" or "error"
+    // - Inside "data": status can be "complete" or "failed"
+    const isApiSuccess = data.status === "success";
+    const isTransferComplete = data.data?.status === "complete";
+    const isSuccess = isApiSuccess && isTransferComplete;
     
     if (isSuccess) {
       return {
         success: true,
-        transaction_id: data.data?.id || data.transaction_id,
-        message: data.message,
+        transaction_id: data.data?.id,
+        message: data.message || "Transferência realizada com sucesso",
       };
     }
 
+    // Return appropriate error message
+    const errorMessage = data.data?.status === "failed" 
+      ? "Transferência falhou" 
+      : (data.message || data.error || "Transfer failed");
+
     return {
       success: false,
-      error: data.message || data.error || "Transfer failed",
+      error: errorMessage,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
