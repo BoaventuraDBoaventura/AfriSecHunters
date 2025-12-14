@@ -97,6 +97,7 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
     setLoading(true);
     
     // Fetch pending deposits (company submitted, waiting admin confirmation)
+    // Include ALL pending deposits regardless of pentester_paid status
     let depositsQuery = supabase
       .from('platform_transactions')
       .select(`
