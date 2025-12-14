@@ -525,11 +525,13 @@ export default function PublicProfile() {
                     <CertificateCard
                       key={cert.id}
                       id={cert.id}
+                      pentesterId={cert.pentester_id}
                       pentesterName={profile.display_name || 'Hunter'}
                       rankTitle={cert.rank_title}
                       points={cert.points_at_issue}
                       issuedAt={cert.issued_at}
                       certificateCode={cert.certificate_code}
+                      isOwner={false}
                     />
                   ))}
                 </div>
