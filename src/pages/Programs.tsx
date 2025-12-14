@@ -91,7 +91,7 @@ export default function Programs() {
                   <div className="flex items-center gap-3 mb-4">
                     <div className="h-16 w-16 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {program.company?.company_logo ? (
-                        <img src={program.company.company_logo} alt="" className="h-full w-full object-cover" />
+                        <img src={program.company.company_logo} alt="" className="h-full w-full object-contain p-1" />
                       ) : (
                         <Building2 className="h-8 w-8 text-primary" />
                       )}
