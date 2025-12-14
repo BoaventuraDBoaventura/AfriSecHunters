@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, Loader2, Save, Percent, Phone, Wallet, RefreshCw } from 'lucide-react';
+import { Settings, Loader2, Save, Percent, Phone, Wallet, RefreshCw, PiggyBank } from 'lucide-react';
 
 interface GibrapayBalance {
   success: boolean;
@@ -22,6 +22,8 @@ export function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [platformFee, setPlatformFee] = useState('10');
   const [originalFee, setOriginalFee] = useState('10');
+  const [pentesterDeduction, setPentesterDeduction] = useState('20');
+  const [originalDeduction, setOriginalDeduction] = useState('20');
   const [platformPhone, setPlatformPhone] = useState('');
   const [originalPhone, setOriginalPhone] = useState('');
   const [gibrapayData, setGibrapayData] = useState<GibrapayBalance | null>(null);
@@ -54,12 +56,13 @@ export function AdminSettings() {
       const { data, error } = await supabase
         .from('platform_settings')
         .select('*')
-        .in('setting_key', ['platform_fee_percentage', 'platform_mpesa_number']);
+        .in('setting_key', ['platform_fee_percentage', 'platform_mpesa_number', 'pentester_deduction_percentage']);
 
       if (error) throw error;
 
       if (data) {
         const feeSetting = data.find(d => d.setting_key === 'platform_fee_percentage');
+        const deductionSetting = data.find(d => d.setting_key === 'pentester_deduction_percentage');
         const phoneSetting = data.find(d => d.setting_key === 'platform_mpesa_number');
         
         if (feeSetting) {
@@ -68,6 +71,14 @@ export function AdminSettings() {
             : String(feeSetting.setting_value);
           setPlatformFee(feeValue);
           setOriginalFee(feeValue);
+        }
+        
+        if (deductionSetting) {
+          const deductionValue = typeof deductionSetting.setting_value === 'string' 
+            ? deductionSetting.setting_value 
+            : String(deductionSetting.setting_value);
+          setPentesterDeduction(deductionValue);
+          setOriginalDeduction(deductionValue);
         }
         
         if (phoneSetting) {
@@ -92,11 +103,21 @@ export function AdminSettings() {
 
   const handleSave = async () => {
     const feeValue = parseFloat(platformFee);
+    const deductionValue = parseFloat(pentesterDeduction);
     
     if (isNaN(feeValue) || feeValue < 0 || feeValue > 100) {
       toast({ 
         title: 'Erro', 
-        description: 'A taxa deve ser um valor entre 0 e 100.', 
+        description: 'A taxa da plataforma deve ser um valor entre 0 e 100.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    if (isNaN(deductionValue) || deductionValue < 0 || deductionValue > 100) {
+      toast({ 
+        title: 'Erro', 
+        description: 'A dedução do pentester deve ser um valor entre 0 e 100.', 
         variant: 'destructive' 
       });
       return;
@@ -124,6 +145,17 @@ export function AdminSettings() {
 
       if (feeError) throw feeError;
 
+      // Update pentester deduction
+      const { error: deductionError } = await supabase
+        .from('platform_settings')
+        .update({ 
+          setting_value: parseFloat(pentesterDeduction),
+          updated_at: new Date().toISOString()
+        })
+        .eq('setting_key', 'pentester_deduction_percentage');
+
+      if (deductionError) throw deductionError;
+
       // Update platform phone
       const { error: phoneError } = await supabase
         .from('platform_settings')
@@ -136,6 +168,7 @@ export function AdminSettings() {
       if (phoneError) throw phoneError;
 
       setOriginalFee(platformFee);
+      setOriginalDeduction(pentesterDeduction);
       setOriginalPhone(platformPhone);
       toast({ 
         title: 'Sucesso', 
@@ -153,7 +186,7 @@ export function AdminSettings() {
     }
   };
 
-  const hasChanges = platformFee !== originalFee || platformPhone !== originalPhone;
+  const hasChanges = platformFee !== originalFee || pentesterDeduction !== originalDeduction || platformPhone !== originalPhone;
 
   if (loading) {
     return (
@@ -227,14 +260,14 @@ export function AdminSettings() {
           )}
         </div>
 
-        {/* Platform Fee Setting */}
+        {/* Platform Fee Setting - Added on top for company */}
         <div className="p-4 rounded-lg border border-border bg-card">
           <div className="flex items-center gap-2 mb-3">
             <Percent className="h-5 w-5 text-secondary" />
             <h3 className="font-medium text-foreground">Taxa da Plataforma</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            Percentagem cobrada sobre cada pagamento de recompensa. Esta taxa é deduzida do valor pago aos pentesters.
+            Percentagem adicionada ao valor da recompensa. Este valor é pago pela empresa e transferido para o número da plataforma.
           </p>
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
@@ -253,11 +286,62 @@ export function AdminSettings() {
             </div>
           </div>
           <div className="mt-3 text-xs text-muted-foreground">
-            <p>Exemplo: Com taxa de {platformFee}%, num pagamento de MZN 1.000:</p>
-            <ul className="mt-1 space-y-1 ml-4 list-disc">
-              <li>Pentester recebe: MZN {(1000 * (1 - parseFloat(platformFee || '0') / 100)).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</li>
-              <li>Plataforma recebe: MZN {(1000 * parseFloat(platformFee || '0') / 100).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</li>
-            </ul>
+            <p>Vai para o número M-Pesa da plataforma.</p>
+          </div>
+        </div>
+
+        {/* Pentester Deduction Setting - Stays in GibaPay */}
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <div className="flex items-center gap-2 mb-3">
+            <PiggyBank className="h-5 w-5 text-primary" />
+            <h3 className="font-medium text-foreground">Dedução do Pentester</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Percentagem deduzida do valor do pentester. Este valor fica retido no saldo GibaPay.
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={pentesterDeduction}
+                onChange={(e) => setPentesterDeduction(e.target.value)}
+                className="pr-8 bg-input border-border"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                %
+              </span>
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-muted-foreground">
+            <p>Fica no saldo GibaPay da plataforma.</p>
+          </div>
+        </div>
+
+        {/* Example Calculation */}
+        <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 md:col-span-2 lg:col-span-3">
+          <h3 className="font-medium text-foreground mb-3">📊 Exemplo de Cálculo (Recompensa: MZN 1.000)</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 text-sm">
+            <div className="p-3 bg-card rounded border border-border">
+              <p className="text-muted-foreground">Recompensa definida</p>
+              <p className="text-lg font-semibold text-foreground">MZN 1.000</p>
+            </div>
+            <div className="p-3 bg-card rounded border border-border">
+              <p className="text-muted-foreground">+ Taxa plataforma ({platformFee}%)</p>
+              <p className="text-lg font-semibold text-secondary">MZN {(1000 * parseFloat(platformFee || '0') / 100).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs text-muted-foreground">→ Vai para M-Pesa</p>
+            </div>
+            <div className="p-3 bg-card rounded border border-border">
+              <p className="text-muted-foreground">Total cobrado da empresa</p>
+              <p className="text-lg font-semibold text-primary">MZN {(1000 + 1000 * parseFloat(platformFee || '0') / 100).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</p>
+            </div>
+            <div className="p-3 bg-card rounded border border-border">
+              <p className="text-muted-foreground">Pentester recebe</p>
+              <p className="text-lg font-semibold text-success">MZN {(1000 - 1000 * parseFloat(pentesterDeduction || '0') / 100).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs text-muted-foreground">({pentesterDeduction}% fica no GibaPay)</p>
+            </div>
           </div>
         </div>
 

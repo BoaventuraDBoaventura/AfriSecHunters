@@ -473,6 +473,7 @@ export type Database = {
     Functions: {
       get_hunter_monthly_stats: { Args: { hunter_id: string }; Returns: Json }
       get_hunter_public_stats: { Args: { hunter_id: string }; Returns: Json }
+      get_pentester_deduction: { Args: never; Returns: number }
       get_platform_fee: { Args: never; Returns: number }
       get_platform_mpesa_number: { Args: never; Returns: string }
       get_platform_stats: { Args: never; Returns: Json }

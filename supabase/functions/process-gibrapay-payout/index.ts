@@ -179,22 +179,41 @@ serve(async (req) => {
       throw new Error("Número de telefone não fornecido");
     }
 
-    // Fetch platform fee from database
+    // Fetch platform fee (added to company payment) from database
     const { data: feeData } = await supabaseClient
       .rpc('get_platform_fee');
     
     const platformFeePercentage = feeData ? parseFloat(String(feeData)) / 100 : 0.10;
     logStep("Platform fee fetched", { percentage: platformFeePercentage * 100 });
 
-    // CORRECT LOGIC: Pentester receives full reward, platform fee is ADDED on top
-    // - netAmount = what pentester receives (the full reward defined by company)
-    // - platformFee = calculated fee added on top
-    // - grossAmount = total transferred from GibaPay wallet (net + fee)
-    const netAmount = effectiveRewardAmount || 0;
-    const platformFee = Math.round(netAmount * platformFeePercentage * 100) / 100;
-    const grossAmount = Math.round((netAmount + platformFee) * 100) / 100;
+    // Fetch pentester deduction (stays in GibaPay) from database
+    const { data: deductionData } = await supabaseClient
+      .rpc('get_pentester_deduction');
+    
+    const pentesterDeductionPercentage = deductionData ? parseFloat(String(deductionData)) / 100 : 0.20;
+    logStep("Pentester deduction fetched", { percentage: pentesterDeductionPercentage * 100 });
 
-    logStep("Calculated amounts", { netAmount, platformFee, grossAmount });
+    // PAYMENT FLOW:
+    // 1. Company wants to pay X MZN to pentester
+    // 2. Platform adds its fee on top = X + (X * platformFee%)
+    // 3. Total enters GibaPay wallet
+    // 4. From X, platform deducts pentesterDeduction% that stays in GibaPay
+    // 5. Pentester receives: X - (X * pentesterDeduction%)
+    // 6. Platform M-Pesa receives: X * platformFee%
+    
+    const rewardAmount = effectiveRewardAmount || 0; // What company says pentester should receive
+    const platformFee = Math.round(rewardAmount * platformFeePercentage * 100) / 100; // Fee added on top
+    const pentesterDeduction = Math.round(rewardAmount * pentesterDeductionPercentage * 100) / 100; // Stays in GibaPay
+    const pentesterReceives = Math.round((rewardAmount - pentesterDeduction) * 100) / 100; // What pentester actually gets
+    const grossAmount = Math.round((rewardAmount + platformFee) * 100) / 100; // Total charged to company
+
+    logStep("Calculated amounts", { 
+      rewardAmount, 
+      platformFee, 
+      pentesterDeduction,
+      pentesterReceives,
+      grossAmount 
+    });
 
     // For direct payments (company paying via mobile wallet), create transaction record first
     let existingTransactionId = transactionId;
@@ -207,7 +226,7 @@ serve(async (req) => {
           pentester_id: report.pentester_id,
           gross_amount: grossAmount,
           platform_fee: platformFee,
-          net_amount: netAmount,
+          net_amount: pentesterReceives,
           status: "completed",
           payout_type: "pending",
           gibrapay_status: "processing",
@@ -222,19 +241,20 @@ serve(async (req) => {
         logStep("Created transaction record", { transactionId: existingTransactionId });
       }
     }
-    // Transfer to pentester
+    
+    // Transfer to pentester (reward minus deduction)
     const pentesterReference = `REP-${reportId.slice(0, 8)}-PENT`;
     const pentesterTransfer = await makeGibrapayTransfer(
       gibrapayApiKey,
       gibrapayWalletId,
       phoneNumber,
-      netAmount,
+      pentesterReceives,
       pentesterReference
     );
 
     let platformTransfer: GibrapayTransferResponse = { success: true };
     
-    // Transfer platform fee if configured
+    // Transfer platform fee to platform's M-Pesa (the fee added on top)
     if (platformMpesaNumber && platformFee > 0) {
       const platformReference = `REP-${reportId.slice(0, 8)}-PLAT`;
       platformTransfer = await makeGibrapayTransfer(
@@ -245,6 +265,8 @@ serve(async (req) => {
         platformReference
       );
     }
+    
+    // Note: pentesterDeduction stays in GibaPay wallet (no transfer needed)
 
     // Determine overall status
     const overallSuccess = pentesterTransfer.success;
