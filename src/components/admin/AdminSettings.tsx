@@ -113,11 +113,11 @@ export function AdminSettings() {
 
     setSaving(true);
     try {
-      // Update platform fee
+      // Update platform fee (store as number, not string)
       const { error: feeError } = await supabase
         .from('platform_settings')
         .update({ 
-          setting_value: platformFee,
+          setting_value: parseFloat(platformFee),
           updated_at: new Date().toISOString()
         })
         .eq('setting_key', 'platform_fee_percentage');
