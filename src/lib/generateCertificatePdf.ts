@@ -9,7 +9,6 @@ interface CertificateData {
   verificationUrl: string;
 }
 
-// Function to load image as base64
 async function loadImageAsBase64(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -49,173 +48,173 @@ export async function generateCertificatePdf(data: CertificateData) {
     console.warn('Could not load logo:', e);
   }
 
-  // ===== BACKGROUND =====
+  // ===== CLEAN WHITE BACKGROUND =====
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, width, height, 'F');
 
-  // Subtle wave pattern on left side
-  doc.setDrawColor(245, 245, 245);
-  doc.setLineWidth(1);
-  for (let i = 0; i < 6; i++) {
-    const startY = 50 + i * 18;
-    doc.line(0, startY, 90 - i * 12, startY + 35);
-  }
+  // ===== ELEGANT BORDER =====
+  // Outer gold/green border
+  doc.setDrawColor(0, 180, 90);
+  doc.setLineWidth(3);
+  doc.rect(8, 8, width - 16, height - 16, 'S');
 
-  // ===== DECORATIVE CORNERS =====
-  // Top left - dark triangle
-  doc.setFillColor(35, 35, 35);
-  doc.triangle(0, 0, 60, 0, 0, 45, 'F');
+  // Inner thin border
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.rect(12, 12, width - 24, height - 24, 'S');
 
-  // Bottom right - green triangle (main)
-  doc.setFillColor(0, 200, 80);
-  doc.triangle(width, height, width - 80, height, width, height - 55, 'F');
+  // ===== CORNER DECORATIONS =====
+  const cornerSize = 15;
+  doc.setFillColor(0, 180, 90);
+  
+  // Top left corner accent
+  doc.rect(8, 8, cornerSize, 3, 'F');
+  doc.rect(8, 8, 3, cornerSize, 'F');
+  
+  // Top right corner accent
+  doc.rect(width - 8 - cornerSize, 8, cornerSize, 3, 'F');
+  doc.rect(width - 11, 8, 3, cornerSize, 'F');
+  
+  // Bottom left corner accent
+  doc.rect(8, height - 11, cornerSize, 3, 'F');
+  doc.rect(8, height - 8 - cornerSize, 3, cornerSize, 'F');
+  
+  // Bottom right corner accent
+  doc.rect(width - 8 - cornerSize, height - 11, cornerSize, 3, 'F');
+  doc.rect(width - 11, height - 8 - cornerSize, 3, cornerSize, 'F');
 
-  // Bottom right - dark triangle accent
-  doc.setFillColor(35, 35, 35);
-  doc.triangle(width - 80, height, width - 40, height, width - 60, height - 30, 'F');
-
-  // ===== LOGO - Top Right =====
+  // ===== HEADER SECTION =====
+  // Logo centered at top
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', width - 85, 12, 70, 25);
+    doc.addImage(logoBase64, 'PNG', width / 2 - 40, 18, 80, 28);
+  } else {
+    // Fallback text if no logo
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(0, 180, 90);
+    doc.text('AFRISEC HUNTERS', width / 2, 35, { align: 'center' });
   }
 
-  // ===== MAIN TITLE =====
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(52);
-  doc.setTextColor(45, 45, 45);
-  doc.text('CERTIFICADO', 20, 55);
+  // Decorative line under logo
+  doc.setDrawColor(0, 180, 90);
+  doc.setLineWidth(1);
+  doc.line(width / 2 - 50, 50, width / 2 + 50, 50);
 
-  // Green accent line under title
-  doc.setFillColor(0, 200, 80);
-  doc.rect(20, 60, 105, 3.5, 'F');
+  // Small decorative elements
+  doc.setFillColor(0, 180, 90);
+  doc.circle(width / 2 - 55, 50, 2, 'F');
+  doc.circle(width / 2 + 55, 50, 2, 'F');
 
-  // ===== SUBTITLE =====
+  // ===== CERTIFICATE TITLE =====
+  doc.setFont('times', 'bold');
+  doc.setFontSize(36);
+  doc.setTextColor(50, 50, 50);
+  doc.text('CERTIFICADO DE RANKING', width / 2, 68, { align: 'center' });
+
+  // Subtitle
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(14);
-  doc.setTextColor(100, 100, 100);
-  doc.text('A AfriSec Hunters certifica que o hunter', 20, 78);
+  doc.setFontSize(12);
+  doc.setTextColor(120, 120, 120);
+  doc.text('Este documento certifica que', width / 2, 80, { align: 'center' });
 
-  // ===== NAME - Script style =====
+  // ===== RECIPIENT NAME =====
   doc.setFont('times', 'bolditalic');
-  doc.setFontSize(48);
-  doc.setTextColor(40, 50, 70);
-  doc.text(data.pentesterName, 20, 108);
+  doc.setFontSize(42);
+  doc.setTextColor(0, 100, 60);
+  doc.text(data.pentesterName, width / 2, 100, { align: 'center' });
 
-  // ===== ACHIEVEMENT TEXT =====
+  // Elegant underline for name
+  const nameWidth = doc.getTextWidth(data.pentesterName);
+  doc.setDrawColor(0, 180, 90);
+  doc.setLineWidth(0.8);
+  doc.line(width / 2 - nameWidth / 2 - 5, 104, width / 2 + nameWidth / 2 + 5, 104);
+
+  // ===== ACHIEVEMENT =====
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(13);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Alcancou com ${data.points.toLocaleString()} pontos o nivel de`, 20, 130);
+  doc.text(`alcancou com excelencia o nivel de`, width / 2, 118, { align: 'center' });
 
-  // ===== RANK TITLE =====
+  // Rank box
+  const rankBoxWidth = 100;
+  const rankBoxX = (width - rankBoxWidth) / 2;
+  doc.setFillColor(0, 180, 90);
+  doc.roundedRect(rankBoxX, 124, rankBoxWidth, 18, 3, 3, 'F');
+
+  // Rank title
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(28);
-  doc.setTextColor(30, 30, 30);
-  doc.text(data.rankTitle.toUpperCase(), 20, 150);
-
-  // ===== RIGHT SIDE BADGE =====
-  const badgeCenterX = width - 55;
-  const badgeCenterY = 95;
-
-  // Badge shield background
-  doc.setFillColor(40, 45, 50);
-  doc.roundedRect(badgeCenterX - 30, badgeCenterY - 20, 60, 55, 5, 5, 'F');
-  
-  // Pointed bottom
-  doc.triangle(
-    badgeCenterX - 30, badgeCenterY + 35,
-    badgeCenterX + 30, badgeCenterY + 35,
-    badgeCenterX, badgeCenterY + 55,
-    'F'
-  );
-
-  // Stars at top
-  doc.setFontSize(14);
-  doc.setTextColor(255, 255, 255);
-  doc.text('*  *  *', badgeCenterX, badgeCenterY - 8, { align: 'center' });
-
-  // Platform name
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(180, 180, 180);
-  doc.text('AFRISEC HUNTERS', badgeCenterX, badgeCenterY + 2, { align: 'center' });
-
-  // Green ribbon
-  doc.setFillColor(0, 200, 80);
-  doc.rect(badgeCenterX - 38, badgeCenterY + 8, 76, 18, 'F');
-  
-  // Ribbon folds
-  doc.setFillColor(0, 150, 60);
-  doc.triangle(badgeCenterX - 38, badgeCenterY + 8, badgeCenterX - 38, badgeCenterY + 26, badgeCenterX - 44, badgeCenterY + 17, 'F');
-  doc.triangle(badgeCenterX + 38, badgeCenterY + 8, badgeCenterX + 38, badgeCenterY + 26, badgeCenterX + 44, badgeCenterY + 17, 'F');
-
-  // Ribbon text
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(255, 255, 255);
-  doc.text(data.rankTitle.toUpperCase(), badgeCenterX, badgeCenterY + 20, { align: 'center' });
-
-  // Inner shield
-  doc.setFillColor(50, 55, 60);
-  doc.roundedRect(badgeCenterX - 16, badgeCenterY + 30, 32, 20, 3, 3, 'F');
-
-  // Bug text
-  doc.setFontSize(9);
-  doc.setTextColor(0, 200, 80);
-  doc.text('< BUG >', badgeCenterX, badgeCenterY + 43, { align: 'center' });
-
-  // Decorative stars
-  doc.setFontSize(14);
-  doc.setTextColor(255, 200, 50);
-  doc.text('*', badgeCenterX - 22, badgeCenterY + 52);
-  doc.text('*', badgeCenterX + 22, badgeCenterY + 52);
-
-  // ===== FOOTER =====
-  const footerY = height - 28;
-
-  // Signature line
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.5);
-  doc.line(20, footerY, 85, footerY);
-
-  // Signature
-  doc.setFont('times', 'italic');
   doc.setFontSize(16);
-  doc.setTextColor(70, 70, 70);
-  doc.text('AfriSec Hunters', 35, footerY - 4);
+  doc.setTextColor(255, 255, 255);
+  doc.text(data.rankTitle.toUpperCase(), width / 2, 136, { align: 'center' });
 
-  // Signature label
+  // Points
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(11);
+  doc.setTextColor(80, 80, 80);
+  doc.text(`com ${data.points.toLocaleString()} pontos conquistados`, width / 2, 152, { align: 'center' });
+
+  // ===== FOOTER SECTION =====
+  const footerY = height - 35;
+
+  // Decorative line
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.5);
+  doc.line(30, footerY - 10, width - 30, footerY - 10);
+
+  // Signature section (left)
+  doc.setDrawColor(150, 150, 150);
+  doc.setLineWidth(0.5);
+  doc.line(40, footerY + 5, 100, footerY + 5);
+  
+  doc.setFont('times', 'italic');
+  doc.setFontSize(12);
+  doc.setTextColor(80, 80, 80);
+  doc.text('AfriSec Hunters', 70, footerY + 2, { align: 'center' });
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
   doc.setTextColor(130, 130, 130);
-  doc.text('AfriSec Hunters | Plataforma', 20, footerY + 7);
+  doc.text('Plataforma de Bug Bounty', 70, footerY + 12, { align: 'center' });
 
-  // Date section
-  doc.setDrawColor(180, 180, 180);
-  doc.line(105, footerY, 165, footerY);
-
+  // Date section (center)
   const formattedDate = new Date(data.issuedAt).toLocaleDateString('pt-BR', {
     day: '2-digit',
-    month: '2-digit', 
+    month: 'long',
     year: 'numeric'
   });
-
+  
+  doc.setDrawColor(150, 150, 150);
+  doc.line(width / 2 - 30, footerY + 5, width / 2 + 30, footerY + 5);
+  
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(45, 45, 45);
-  doc.text(formattedDate, 135, footerY - 4, { align: 'center' });
-
+  doc.setFontSize(10);
+  doc.setTextColor(60, 60, 60);
+  doc.text(formattedDate, width / 2, footerY + 2, { align: 'center' });
+  
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(130, 130, 130);
-  doc.text('Data', 135, footerY + 7, { align: 'center' });
-
-  // Certificate code
-  doc.setFont('courier', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text(`Codigo: ${data.certificateCode}`, width - 15, footerY, { align: 'right' });
-  doc.text('Verificar: afrisechunters.com/certificate', width - 15, footerY + 6, { align: 'right' });
+  doc.setTextColor(130, 130, 130);
+  doc.text('Data de Emissao', width / 2, footerY + 12, { align: 'center' });
+
+  // Verification section (right)
+  doc.setDrawColor(150, 150, 150);
+  doc.line(width - 100, footerY + 5, width - 40, footerY + 5);
+  
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(0, 180, 90);
+  doc.text(data.certificateCode, width - 70, footerY + 2, { align: 'center' });
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(130, 130, 130);
+  doc.text('Codigo de Verificacao', width - 70, footerY + 12, { align: 'center' });
+
+  // Bottom verification URL
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(160, 160, 160);
+  doc.text('Verifique a autenticidade em: afrisechunters.com/certificate/' + data.certificateCode, width / 2, height - 12, { align: 'center' });
 
   // Download
   doc.save(`certificado_${data.certificateCode}.pdf`);
