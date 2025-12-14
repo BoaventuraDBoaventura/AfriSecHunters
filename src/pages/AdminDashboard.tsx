@@ -6,9 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, Program, Report } from '@/types/database';
-import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3, DollarSign, RotateCcw } from 'lucide-react';
+import { Users, FileText, Shield, Trash2, Ban, CheckCircle, Eye, BarChart3, DollarSign, RotateCcw, Settings } from 'lucide-react';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { AdminFinance } from '@/components/admin/AdminFinance';
+import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminFilters, DateRange } from '@/components/admin/AdminFilters';
 import { exportToCsv } from '@/lib/exportCsv';
 import { Button } from '@/components/ui/button';
@@ -301,7 +302,7 @@ export default function AdminDashboard() {
         {/* Tabs */}
         <CyberCard glow>
           <Tabs defaultValue="analytics">
-            <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" /> Analytics
               </TabsTrigger>
@@ -316,6 +317,9 @@ export default function AdminDashboard() {
               </TabsTrigger>
               <TabsTrigger value="reports" className="flex items-center gap-2">
                 <Shield className="h-4 w-4" /> Relatórios
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" /> Config
               </TabsTrigger>
             </TabsList>
 
@@ -574,6 +578,11 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings">
+              <AdminSettings />
             </TabsContent>
           </Tabs>
         </CyberCard>

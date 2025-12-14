@@ -59,6 +59,33 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       platform_transactions: {
         Row: {
           company_id: string
@@ -446,6 +473,7 @@ export type Database = {
     Functions: {
       get_hunter_monthly_stats: { Args: { hunter_id: string }; Returns: Json }
       get_hunter_public_stats: { Args: { hunter_id: string }; Returns: Json }
+      get_platform_fee: { Args: never; Returns: number }
       get_platform_stats: { Args: never; Returns: Json }
       get_rank_title: { Args: { points: number }; Returns: string }
       has_role: {

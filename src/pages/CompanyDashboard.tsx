@@ -60,6 +60,7 @@ export default function CompanyDashboard() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [platformFee, setPlatformFee] = useState(10); // Default 10%
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -70,9 +71,20 @@ export default function CompanyDashboard() {
   useEffect(() => {
     if (user && profile?.role === 'company') {
       fetchData();
+      fetchPlatformFee();
     }
   }, [user, profile]);
 
+  const fetchPlatformFee = async () => {
+    try {
+      const { data } = await supabase.rpc('get_platform_fee');
+      if (data) {
+        setPlatformFee(parseFloat(String(data)));
+      }
+    } catch (error) {
+      console.error('Error fetching platform fee:', error);
+    }
+  };
 
   const fetchData = async () => {
     // Fetch programs
@@ -615,7 +627,7 @@ export default function CompanyDashboard() {
                 }
               </p>
               <p className="text-xs text-primary mt-2">
-                💳 Taxa de plataforma: 10% será adicionada ao checkout
+                💳 Taxa de plataforma: {platformFee}% será deduzida do pagamento
               </p>
             </div>
           </div>
@@ -685,7 +697,7 @@ export default function CompanyDashboard() {
                 }
               </p>
               <p className="text-xs text-primary mt-1">
-                💳 Taxa de plataforma: 10% ({(parseFloat(paymentAmount) * 0.1 || 0).toLocaleString()} MZN)
+                💳 Taxa de plataforma: {platformFee}% ({(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()} MZN)
               </p>
             </div>
 
