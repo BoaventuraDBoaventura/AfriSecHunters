@@ -91,6 +91,9 @@ export type Database = {
           company_id: string
           completed_at: string | null
           created_at: string
+          deposit_confirmed_at: string | null
+          deposit_confirmed_by: string | null
+          deposit_status: string | null
           gibrapay_error: string | null
           gibrapay_pentester_tx_id: string | null
           gibrapay_platform_tx_id: string | null
@@ -105,16 +108,21 @@ export type Database = {
           pentester_paid_at: string | null
           pentester_payment_notes: string | null
           pentester_payment_reference: string | null
+          phone_number: string | null
           platform_fee: number
           report_id: string
           status: string
           stripe_payment_intent: string | null
           stripe_session_id: string | null
+          wallet_type: string | null
         }
         Insert: {
           company_id: string
           completed_at?: string | null
           created_at?: string
+          deposit_confirmed_at?: string | null
+          deposit_confirmed_by?: string | null
+          deposit_status?: string | null
           gibrapay_error?: string | null
           gibrapay_pentester_tx_id?: string | null
           gibrapay_platform_tx_id?: string | null
@@ -129,16 +137,21 @@ export type Database = {
           pentester_paid_at?: string | null
           pentester_payment_notes?: string | null
           pentester_payment_reference?: string | null
+          phone_number?: string | null
           platform_fee: number
           report_id: string
           status?: string
           stripe_payment_intent?: string | null
           stripe_session_id?: string | null
+          wallet_type?: string | null
         }
         Update: {
           company_id?: string
           completed_at?: string | null
           created_at?: string
+          deposit_confirmed_at?: string | null
+          deposit_confirmed_by?: string | null
+          deposit_status?: string | null
           gibrapay_error?: string | null
           gibrapay_pentester_tx_id?: string | null
           gibrapay_platform_tx_id?: string | null
@@ -153,11 +166,13 @@ export type Database = {
           pentester_paid_at?: string | null
           pentester_payment_notes?: string | null
           pentester_payment_reference?: string | null
+          phone_number?: string | null
           platform_fee?: number
           report_id?: string
           status?: string
           stripe_payment_intent?: string | null
           stripe_session_id?: string | null
+          wallet_type?: string | null
         }
         Relationships: [
           {

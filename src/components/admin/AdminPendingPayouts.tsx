@@ -38,6 +38,9 @@ interface PendingPayout {
   id: string;
   report_id: string;
   pentester_id: string;
+  company_id: string;
+  gross_amount: number;
+  platform_fee: number;
   net_amount: number;
   created_at: string;
   pentester_paid: boolean;
@@ -45,6 +48,9 @@ interface PendingPayout {
   gibrapay_status?: string;
   gibrapay_pentester_tx_id?: string;
   gibrapay_error?: string;
+  deposit_status?: string;
+  wallet_type?: string;
+  phone_number?: string;
   pentester?: {
     display_name: string | null;
     payout_method: string | null;
@@ -55,6 +61,10 @@ interface PendingPayout {
       phone_number?: string;
       paypal_email?: string;
     } | null;
+  };
+  company?: {
+    display_name: string | null;
+    company_name: string | null;
   };
   report?: {
     title: string;
@@ -67,11 +77,13 @@ interface AdminPendingPayoutsProps {
 }
 
 export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsProps) {
+  const [pendingDeposits, setPendingDeposits] = useState<PendingPayout[]>([]);
   const [pendingPayouts, setPendingPayouts] = useState<PendingPayout[]>([]);
   const [completedPayouts, setCompletedPayouts] = useState<PendingPayout[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPayout, setSelectedPayout] = useState<PendingPayout | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDepositConfirmOpen, setIsDepositConfirmOpen] = useState(false);
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -84,13 +96,46 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
   const fetchPayouts = async () => {
     setLoading(true);
     
-    // Fetch pending payouts
+    // Fetch pending deposits (company submitted, waiting admin confirmation)
+    let depositsQuery = supabase
+      .from('platform_transactions')
+      .select(`
+        id,
+        report_id,
+        pentester_id,
+        company_id,
+        gross_amount,
+        platform_fee,
+        net_amount,
+        created_at,
+        pentester_paid,
+        payout_type,
+        gibrapay_status,
+        deposit_status,
+        wallet_type,
+        phone_number,
+        pentester:profiles!platform_transactions_pentester_id_fkey (
+          display_name,
+          payout_method,
+          payout_details
+        ),
+        report:reports!platform_transactions_report_id_fkey (
+          title
+        )
+      `)
+      .eq('deposit_status', 'pending')
+      .order('created_at', { ascending: false });
+
+    // Fetch pending payouts (deposit confirmed, but pentester not paid yet)
     let pendingQuery = supabase
       .from('platform_transactions')
       .select(`
         id,
         report_id,
         pentester_id,
+        company_id,
+        gross_amount,
+        platform_fee,
         net_amount,
         created_at,
         pentester_paid,
@@ -98,6 +143,9 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
         gibrapay_status,
         gibrapay_pentester_tx_id,
         gibrapay_error,
+        deposit_status,
+        wallet_type,
+        phone_number,
         pentester:profiles!platform_transactions_pentester_id_fkey (
           display_name,
           payout_method,
@@ -108,6 +156,7 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
         )
       `)
       .eq('pentester_paid', false)
+      .eq('deposit_status', 'confirmed')
       .order('created_at', { ascending: false });
 
     // Fetch completed payouts
@@ -138,21 +187,27 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
       .limit(20);
 
     if (dateFrom) {
+      depositsQuery = depositsQuery.gte('created_at', dateFrom.toISOString());
       pendingQuery = pendingQuery.gte('created_at', dateFrom.toISOString());
       completedQuery = completedQuery.gte('created_at', dateFrom.toISOString());
     }
     if (dateTo) {
       const endOfDay = new Date(dateTo);
       endOfDay.setHours(23, 59, 59, 999);
+      depositsQuery = depositsQuery.lte('created_at', endOfDay.toISOString());
       pendingQuery = pendingQuery.lte('created_at', endOfDay.toISOString());
       completedQuery = completedQuery.lte('created_at', endOfDay.toISOString());
     }
 
-    const [pendingResult, completedResult] = await Promise.all([
+    const [depositsResult, pendingResult, completedResult] = await Promise.all([
+      depositsQuery,
       pendingQuery,
       completedQuery
     ]);
 
+    if (!depositsResult.error && depositsResult.data) {
+      setPendingDeposits(depositsResult.data as unknown as PendingPayout[]);
+    }
     if (!pendingResult.error && pendingResult.data) {
       setPendingPayouts(pendingResult.data as unknown as PendingPayout[]);
     }
@@ -204,6 +259,87 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
     setSelectedPayout(null);
   };
 
+  // Handle confirming a deposit and triggering payout to pentester
+  const handleConfirmDeposit = (payout: PendingPayout) => {
+    setSelectedPayout(payout);
+    setIsDepositConfirmOpen(true);
+  };
+
+  const confirmDepositAndPay = async () => {
+    if (!selectedPayout) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      // First, update deposit status to confirmed
+      const { error: updateError } = await supabase
+        .from('platform_transactions')
+        .update({
+          deposit_status: 'confirmed',
+          deposit_confirmed_at: new Date().toISOString(),
+          status: 'completed',
+        })
+        .eq('id', selectedPayout.id);
+
+      if (updateError) throw updateError;
+
+      // Trigger GibaPay transfer to pentester
+      const pentesterPhone = selectedPayout.pentester?.payout_details?.phone_number || selectedPayout.phone_number;
+      
+      if (pentesterPhone && (selectedPayout.pentester?.payout_method === 'mpesa' || selectedPayout.pentester?.payout_method === 'emola')) {
+        const { data, error } = await supabase.functions.invoke('process-gibrapay-payout', {
+          body: { 
+            reportId: selectedPayout.report_id,
+            transactionId: selectedPayout.id,
+            phoneNumber: pentesterPhone,
+            walletType: selectedPayout.wallet_type || selectedPayout.pentester?.payout_method
+          }
+        });
+
+        if (error) {
+          console.error('GibaPay error:', error);
+          toast({
+            title: 'Depósito Confirmado',
+            description: 'Depósito confirmado, mas houve erro na transferência automática. Tente novamente.',
+            variant: 'destructive',
+          });
+        } else if (data?.success) {
+          // Also update report status to paid
+          await supabase.from('reports').update({ status: 'paid' }).eq('id', selectedPayout.report_id);
+          
+          toast({
+            title: 'Sucesso!',
+            description: `Depósito confirmado e pagamento de MZN ${Number(selectedPayout.net_amount).toLocaleString()} enviado ao pentester.`,
+          });
+        } else {
+          toast({
+            title: 'Depósito Confirmado',
+            description: `Transferência automática falhou: ${data?.error}. Pode tentar novamente.`,
+            variant: 'destructive',
+          });
+        }
+      } else {
+        toast({
+          title: 'Depósito Confirmado',
+          description: 'O pagamento ao pentester requer transferência manual (banco ou PayPal).',
+        });
+      }
+      
+      fetchPayouts();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Não foi possível processar.',
+        variant: 'destructive',
+      });
+    }
+    
+    setIsProcessing(false);
+    setIsDepositConfirmOpen(false);
+    setSelectedPayout(null);
+  };
+
+  const totalDeposits = pendingDeposits.reduce((sum, p) => sum + Number(p.gross_amount), 0);
   const totalPending = pendingPayouts.reduce((sum, p) => sum + Number(p.net_amount), 0);
   const totalCompleted = completedPayouts.reduce((sum, p) => sum + Number(p.net_amount), 0);
 
@@ -387,8 +523,16 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-4 gap-4">
         <CyberCard glow className="text-center">
+          <DollarSign className="h-6 w-6 text-secondary mx-auto mb-2" />
+          <div className="text-2xl font-bold font-mono text-secondary">
+            {pendingDeposits.length}
+          </div>
+          <div className="text-sm text-muted-foreground">Depósitos Aguardando</div>
+        </CyberCard>
+
+        <CyberCard className="text-center">
           <Clock className="h-6 w-6 text-warning mx-auto mb-2" />
           <div className="text-2xl font-bold font-mono text-warning">
             {pendingPayouts.length}
@@ -399,9 +543,9 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
         <CyberCard className="text-center">
           <DollarSign className="h-6 w-6 text-destructive mx-auto mb-2" />
           <div className="text-2xl font-bold font-mono text-destructive">
-            MZN {totalPending.toLocaleString()}
+            MZN {totalDeposits.toLocaleString()}
           </div>
-          <div className="text-sm text-muted-foreground">Total a Pagar</div>
+          <div className="text-sm text-muted-foreground">A Receber</div>
         </CyberCard>
 
         <CyberCard className="text-center">
@@ -412,6 +556,78 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
           <div className="text-sm text-muted-foreground">Já Transferido</div>
         </CyberCard>
       </div>
+
+      {/* Pending Deposits Section - NEW */}
+      {pendingDeposits.length > 0 && (
+        <CyberCard glow>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-secondary" />
+              Depósitos Aguardando Confirmação
+            </h3>
+            <span className="text-xs bg-secondary/20 text-secondary px-2 py-1 rounded">
+              {pendingDeposits.length} pendente{pendingDeposits.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          
+          <p className="text-sm text-muted-foreground mb-4">
+            Empresas que submeteram pedidos de pagamento. Confirme quando receber o depósito no M-Pesa/E-Mola da plataforma.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase">
+                  <th className="py-3 px-4">Report</th>
+                  <th className="py-3 px-4">Hunter</th>
+                  <th className="py-3 px-4">Valor Total</th>
+                  <th className="py-3 px-4">Taxa Plataforma</th>
+                  <th className="py-3 px-4">Para Hunter</th>
+                  <th className="py-3 px-4">Data</th>
+                  <th className="py-3 px-4">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingDeposits.map(deposit => (
+                  <tr key={deposit.id} className="border-b border-border/50 hover:bg-secondary/5">
+                    <td className="py-3 px-4 text-sm max-w-48 truncate">
+                      {deposit.report?.title || deposit.report_id.slice(0, 8) + '...'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-medium">
+                        {deposit.pentester?.display_name || 'Hunter'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono font-bold text-secondary">
+                      MZN {Number(deposit.gross_amount).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-muted-foreground">
+                      MZN {Number(deposit.platform_fee).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-primary">
+                      MZN {Number(deposit.net_amount).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
+                      {format(new Date(deposit.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                    </td>
+                    <td className="py-3 px-4">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleConfirmDeposit(deposit)}
+                        className="bg-secondary hover:bg-secondary/80"
+                        disabled={isProcessing}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Confirmar
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CyberCard>
+      )}
 
       {/* Pending Payouts Table */}
       <CyberCard>
@@ -626,6 +842,61 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
             </Button>
             <Button onClick={confirmPayment} disabled={isProcessing}>
               {isProcessing ? 'Processando...' : 'Confirmar Pagamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deposit Confirmation Dialog */}
+      <Dialog open={isDepositConfirmOpen} onOpenChange={setIsDepositConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Recebimento de Depósito</DialogTitle>
+            <DialogDescription>
+              Confirme que recebeu o depósito da empresa no M-Pesa/E-Mola da plataforma.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-secondary/10 border border-secondary/30 rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Valor Recebido:</span>
+                <span className="font-mono font-bold text-secondary">
+                  MZN {Number(selectedPayout?.gross_amount || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Taxa Plataforma:</span>
+                <span className="font-mono text-muted-foreground">
+                  MZN {Number(selectedPayout?.platform_fee || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-border pt-2">
+                <span className="text-muted-foreground">Para o Pentester:</span>
+                <span className="font-mono font-bold text-primary">
+                  MZN {Number(selectedPayout?.net_amount || 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-3 bg-muted/50 rounded text-sm">
+              <p className="text-muted-foreground">
+                Ao confirmar, o sistema enviará automaticamente <span className="text-primary font-semibold">MZN {Number(selectedPayout?.net_amount || 0).toLocaleString()}</span> para{' '}
+                <span className="text-foreground font-semibold">{selectedPayout?.pentester?.display_name || 'o hunter'}</span> via GibaPay.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDepositConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={confirmDepositAndPay} 
+              disabled={isProcessing}
+              className="bg-secondary hover:bg-secondary/80"
+            >
+              {isProcessing ? 'Processando...' : 'Confirmar e Pagar'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -54,7 +54,6 @@ export default function CompanyDashboard() {
   const [actionDialog, setActionDialog] = useState<{ type: 'accept' | 'reject' | 'view' | 'pay'; report: ReportWithDetails } | null>(null);
   const [paymentMethodDialog, setPaymentMethodDialog] = useState<ReportWithDetails | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
-  const [mobileWalletNumber, setMobileWalletNumber] = useState('');
   const [mobileWalletType, setMobileWalletType] = useState<'mpesa' | 'emola'>('mpesa');
   const [rewardAmount, setRewardAmount] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -167,54 +166,75 @@ export default function CompanyDashboard() {
   };
 
 
-  const handlePayWithMobileWallet = async (report: ReportWithDetails) => {
+  const [platformMpesaNumber, setPlatformMpesaNumber] = useState('');
+  const [depositSubmitted, setDepositSubmitted] = useState(false);
+
+  useEffect(() => {
+    // Fetch platform M-Pesa number for deposit instructions
+    const fetchPlatformNumber = async () => {
+      const { data } = await supabase.rpc('get_platform_mpesa_number');
+      if (data) {
+        setPlatformMpesaNumber(data);
+      }
+    };
+    fetchPlatformNumber();
+  }, []);
+
+  const handleSubmitDepositRequest = async (report: ReportWithDetails) => {
     const amount = parseFloat(paymentAmount) || report.reward_amount;
     if (!amount || amount <= 0) {
       toast({ title: 'Erro', description: 'Defina o valor da recompensa primeiro.', variant: 'destructive' });
       return;
     }
 
-    if (!mobileWalletNumber || mobileWalletNumber.length < 9) {
-      toast({ title: 'Erro', description: 'Insira um número de telefone válido.', variant: 'destructive' });
-      return;
-    }
-
     setPaymentProcessing(true);
-    setPaymentMethodDialog(null);
     try {
       // Update reward amount in database first
       if (amount !== report.reward_amount) {
         await supabase.from('reports').update({ reward_amount: amount }).eq('id', report.id);
       }
 
-      const { data, error } = await supabase.functions.invoke('process-gibrapay-payout', {
-        body: { 
-          reportId: report.id,
-          directPayment: true,
-          rewardAmount: amount,
-          phoneNumber: mobileWalletNumber,
-          walletType: mobileWalletType
-        }
-      });
+      const grossAmount = amount + (amount * platformFee / 100);
+      const pentesterReceives = amount - (amount * pentesterDeduction / 100);
+
+      // Create transaction record with pending deposit status
+      const { error } = await supabase
+        .from('platform_transactions')
+        .insert({
+          report_id: report.id,
+          company_id: user?.id,
+          pentester_id: report.pentester_id,
+          gross_amount: grossAmount,
+          platform_fee: amount * platformFee / 100,
+          net_amount: pentesterReceives,
+          status: 'pending',
+          deposit_status: 'pending',
+          payout_type: 'pending',
+          gibrapay_status: 'waiting_deposit',
+          wallet_type: mobileWalletType,
+          phone_number: report.pentester?.payout_details?.phone_number || '',
+        });
 
       if (error) throw error;
 
-      if (data.success) {
-        toast({ 
-          title: 'Pagamento enviado!', 
-          description: `Transferência de MZN ${amount.toLocaleString()} iniciada via ${mobileWalletType.toUpperCase()}.`
-        });
-        fetchData();
-      } else {
-        throw new Error(data.error || 'Erro ao processar pagamento');
-      }
+      setDepositSubmitted(true);
+      toast({ 
+        title: 'Pedido Registado!', 
+        description: 'Faça o depósito conforme as instruções. O admin confirmará o recebimento.'
+      });
     } catch (error: any) {
-      console.error('Error with mobile wallet payment:', error);
-      toast({ title: 'Erro', description: error.message || 'Erro ao processar pagamento.', variant: 'destructive' });
+      console.error('Error creating deposit request:', error);
+      toast({ title: 'Erro', description: error.message || 'Erro ao registar pedido.', variant: 'destructive' });
     } finally {
       setPaymentProcessing(false);
-      setMobileWalletNumber('');
     }
+  };
+
+  const closeDepositDialog = () => {
+    setPaymentMethodDialog(null);
+    setDepositSubmitted(false);
+    setPaymentAmount('');
+    fetchData();
   };
 
   const openPaymentDialog = (report: ReportWithDetails) => {
@@ -671,70 +691,119 @@ export default function CompanyDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Payment Method Selection Dialog */}
-      <Dialog open={!!paymentMethodDialog} onOpenChange={() => setPaymentMethodDialog(null)}>
-        <DialogContent className="bg-card border-border">
+      {/* Payment / Deposit Dialog */}
+      <Dialog open={!!paymentMethodDialog} onOpenChange={closeDepositDialog}>
+        <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Pagar Recompensa</DialogTitle>
+            <DialogTitle className="text-foreground">
+              {depositSubmitted ? '✅ Pedido Registado' : 'Pagar Recompensa'}
+            </DialogTitle>
             <DialogDescription>
-              Pagamento para {paymentMethodDialog?.pentester?.display_name || 'o pentester'}.
+              {depositSubmitted 
+                ? 'Siga as instruções abaixo para completar o pagamento.'
+                : `Pagamento para ${paymentMethodDialog?.pentester?.display_name || 'o pentester'}.`
+              }
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-2">
-            {/* Editable Amount Field */}
-            <div>
-              <label className="text-sm font-medium text-foreground">Recompensa para o Pentester (MZN)</label>
-              <Input
-                type="number"
-                placeholder="1000"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                className="mt-1 bg-input border-border"
-                min="50"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Sugerido para {paymentMethodDialog?.severity}: MZN {
-                  paymentMethodDialog?.severity === 'critical' ? paymentMethodDialog?.program?.reward_critical?.toLocaleString() :
-                  paymentMethodDialog?.severity === 'high' ? paymentMethodDialog?.program?.reward_high?.toLocaleString() :
-                  paymentMethodDialog?.severity === 'medium' ? paymentMethodDialog?.program?.reward_medium?.toLocaleString() :
-                  paymentMethodDialog?.program?.reward_low?.toLocaleString()
-                }
-              </p>
-              
-              {/* Payment breakdown - Company Payment (MAIN) */}
-              <div className="mt-3 p-4 bg-primary/10 rounded-lg border-2 border-primary space-y-2">
-                <p className="text-xs text-muted-foreground uppercase font-semibold">Valor a Pagar pela Empresa</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-foreground">Recompensa:</span>
-                  <span className="text-foreground">MZN {(parseFloat(paymentAmount) || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-foreground">Taxa plataforma ({platformFee}%):</span>
-                  <span className="text-foreground">+ MZN {(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-lg font-bold border-t border-primary/30 pt-2 mt-2">
-                  <span className="text-primary">TOTAL A PAGAR:</span>
-                  <span className="text-primary">MZN {((parseFloat(paymentAmount) || 0) + (parseFloat(paymentAmount) * platformFee / 100 || 0)).toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Info about pentester (secondary, smaller) */}
-              <div className="mt-2 p-2 bg-muted/30 rounded border border-border text-xs text-muted-foreground">
-                <p>ℹ️ O pentester receberá <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span> após dedução de {pentesterDeduction}% para taxas de transferência.</p>
-              </div>
-            </div>
-
-            {/* Payment Method - Mobile Wallet Only */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">Método de Pagamento</label>
-              
-              <div className="p-4 border border-border rounded-lg space-y-3">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="h-5 w-5 text-secondary" />
-                  <p className="font-medium text-foreground">Carteira Móvel</p>
-                </div>
+          {depositSubmitted ? (
+            /* Deposit Instructions - After submission */
+            <div className="space-y-4 py-2">
+              <div className="p-4 bg-warning/10 border-2 border-warning rounded-lg space-y-3">
+                <h4 className="font-bold text-warning flex items-center gap-2">
+                  <Smartphone className="h-5 w-5" />
+                  Instruções de Depósito
+                </h4>
                 
+                <div className="space-y-2 text-sm">
+                  <p className="text-foreground">
+                    Transfira o valor total para a conta da plataforma:
+                  </p>
+                  
+                  <div className="p-3 bg-background rounded border border-border">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-muted-foreground">Número M-Pesa:</span>
+                      <span className="font-mono font-bold text-lg text-primary">
+                        {platformMpesaNumber || 'Não configurado'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Valor a transferir:</span>
+                      <span className="font-mono font-bold text-lg text-primary">
+                        MZN {((parseFloat(paymentAmount) || 0) + (parseFloat(paymentAmount) * platformFee / 100 || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground space-y-1 mt-3">
+                    <p>📱 Abra a aplicação M-Pesa ou E-Mola</p>
+                    <p>💸 Transfira para o número acima</p>
+                    <p>⏳ O admin confirmará o recebimento</p>
+                    <p>✅ O pentester será pago automaticamente</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-3 bg-muted/30 rounded border border-border text-xs text-muted-foreground">
+                <p><strong>Nota:</strong> O pagamento será processado após confirmação do admin. O pentester receberá <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span>.</p>
+              </div>
+              
+              <Button 
+                className="w-full"
+                onClick={closeDepositDialog}
+              >
+                Entendido, Já Transferi
+              </Button>
+            </div>
+          ) : (
+            /* Payment Form - Before submission */
+            <div className="space-y-4 py-2">
+              {/* Editable Amount Field */}
+              <div>
+                <label className="text-sm font-medium text-foreground">Recompensa para o Pentester (MZN)</label>
+                <Input
+                  type="number"
+                  placeholder="1000"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="mt-1 bg-input border-border"
+                  min="50"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sugerido para {paymentMethodDialog?.severity}: MZN {
+                    paymentMethodDialog?.severity === 'critical' ? paymentMethodDialog?.program?.reward_critical?.toLocaleString() :
+                    paymentMethodDialog?.severity === 'high' ? paymentMethodDialog?.program?.reward_high?.toLocaleString() :
+                    paymentMethodDialog?.severity === 'medium' ? paymentMethodDialog?.program?.reward_medium?.toLocaleString() :
+                    paymentMethodDialog?.program?.reward_low?.toLocaleString()
+                  }
+                </p>
+                
+                {/* Payment breakdown - Company Payment (MAIN) */}
+                <div className="mt-3 p-4 bg-primary/10 rounded-lg border-2 border-primary space-y-2">
+                  <p className="text-xs text-muted-foreground uppercase font-semibold">Valor a Depositar</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-foreground">Recompensa:</span>
+                    <span className="text-foreground">MZN {(parseFloat(paymentAmount) || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-foreground">Taxa plataforma ({platformFee}%):</span>
+                    <span className="text-foreground">+ MZN {(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold border-t border-primary/30 pt-2 mt-2">
+                    <span className="text-primary">TOTAL:</span>
+                    <span className="text-primary">MZN {((parseFloat(paymentAmount) || 0) + (parseFloat(paymentAmount) * platformFee / 100 || 0)).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Info about pentester (secondary, smaller) */}
+                <div className="mt-2 p-2 bg-muted/30 rounded border border-border text-xs text-muted-foreground">
+                  <p>ℹ️ O pentester receberá <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span> após dedução de {pentesterDeduction}% para taxas.</p>
+                </div>
+              </div>
+
+              {/* Select wallet type */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Tipo de Carteira</label>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -753,37 +822,27 @@ export default function CompanyDashboard() {
                     E-Mola
                   </Button>
                 </div>
-                
-                <div>
-                  <label className="text-xs text-muted-foreground">Número de telefone</label>
-                  <Input
-                    type="tel"
-                    placeholder="84/85/86/87 XXX XXXX"
-                    value={mobileWalletNumber}
-                    onChange={(e) => setMobileWalletNumber(e.target.value.replace(/\D/g, ''))}
-                    className="mt-1 bg-input border-border"
-                    maxLength={12}
-                  />
-                </div>
-                
-                <Button 
-                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                  onClick={() => paymentMethodDialog && handlePayWithMobileWallet(paymentMethodDialog)}
-                  disabled={paymentProcessing || !paymentAmount || parseFloat(paymentAmount) <= 0 || !mobileWalletNumber || mobileWalletNumber.length < 9}
-                >
-                  {paymentProcessing ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Smartphone className="h-4 w-4 mr-2" />
-                  )}
-                  Pagar via {mobileWalletType.toUpperCase()}
-                </Button>
               </div>
+              
+              <Button 
+                className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                onClick={() => paymentMethodDialog && handleSubmitDepositRequest(paymentMethodDialog)}
+                disabled={paymentProcessing || !paymentAmount || parseFloat(paymentAmount) < 50}
+              >
+                {paymentProcessing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <DollarSign className="h-4 w-4 mr-2" />
+                )}
+                Continuar para Depósito
+              </Button>
             </div>
-          </div>
+          )}
           
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setPaymentMethodDialog(null)}>Cancelar</Button>
+            <Button variant="ghost" onClick={closeDepositDialog}>
+              {depositSubmitted ? 'Fechar' : 'Cancelar'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
