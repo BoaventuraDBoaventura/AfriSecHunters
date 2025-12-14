@@ -802,7 +802,7 @@ export default function CompanyDashboard() {
 
               {/* Company Phone Number Field */}
               <div>
-                <label className="text-sm font-medium text-foreground">Seu Número de Telefone (para transferência)</label>
+                <label className="text-sm font-medium text-foreground">Número para Receber USSD</label>
                 <Input
                   type="tel"
                   placeholder="84XXXXXXX"
@@ -811,7 +811,7 @@ export default function CompanyDashboard() {
                   className="mt-1 bg-input border-border"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Número que será usado para fazer a transferência para a plataforma.
+                  Este número receberá um popup USSD do GibaPay para confirmar o pagamento.
                 </p>
               </div>
 
