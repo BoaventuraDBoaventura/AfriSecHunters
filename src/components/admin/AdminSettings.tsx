@@ -297,7 +297,7 @@ export function AdminSettings() {
             <h3 className="font-medium text-foreground">Dedução do Pentester</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            Percentagem deduzida do valor do pentester. Este valor fica retido no saldo GibaPay.
+            Percentagem deduzida do valor do pentester para cobrir taxas de transferência e custos operacionais da plataforma.
           </p>
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
@@ -316,7 +316,7 @@ export function AdminSettings() {
             </div>
           </div>
           <div className="mt-3 text-xs text-muted-foreground">
-            <p>Fica no saldo GibaPay da plataforma.</p>
+            <p>Cobre taxas de transferência GibaPay e custos operacionais.</p>
           </div>
         </div>
 
@@ -340,7 +340,7 @@ export function AdminSettings() {
             <div className="p-3 bg-card rounded border border-border">
               <p className="text-muted-foreground">Pentester recebe</p>
               <p className="text-lg font-semibold text-success">MZN {(1000 - 1000 * parseFloat(pentesterDeduction || '0') / 100).toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs text-muted-foreground">({pentesterDeduction}% fica no GibaPay)</p>
+              <p className="text-xs text-muted-foreground">(-{pentesterDeduction}% taxas de transferência)</p>
             </div>
           </div>
         </div>
