@@ -62,18 +62,11 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
 
   const fetchTransactions = async () => {
     setLoading(true);
+    
+    // Fetch transactions first
     let query = supabase
       .from('platform_transactions')
-      .select(`
-        *,
-        pentester:profiles!platform_transactions_pentester_id_fkey (
-          display_name,
-          payout_details
-        ),
-        report:reports!platform_transactions_report_id_fkey (
-          title
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (dateFrom) {
@@ -85,11 +78,38 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
       query = query.lte('created_at', endOfDay.toISOString());
     }
 
-    const { data, error } = await query;
+    const { data: txData, error: txError } = await query;
 
-    if (!error && data) {
-      setTransactions(data as unknown as Transaction[]);
+    if (txError || !txData) {
+      setLoading(false);
+      return;
     }
+
+    // Get unique pentester and report IDs
+    const pentesterIds = [...new Set(txData.map(t => t.pentester_id))];
+    const reportIds = [...new Set(txData.map(t => t.report_id))];
+
+    // Fetch pentesters and reports in parallel
+    const [pentestersResult, reportsResult] = await Promise.all([
+      supabase.from('profiles').select('id, display_name, payout_details').in('id', pentesterIds),
+      supabase.from('reports').select('id, title').in('id', reportIds)
+    ]);
+
+    const pentestersMap = new Map(
+      (pentestersResult.data || []).map(p => [p.id, p])
+    );
+    const reportsMap = new Map(
+      (reportsResult.data || []).map(r => [r.id, r])
+    );
+
+    // Enrich transactions
+    const enrichedTransactions: Transaction[] = txData.map(t => ({
+      ...t,
+      pentester: pentestersMap.get(t.pentester_id) as Transaction['pentester'],
+      report: reportsMap.get(t.report_id) as Transaction['report']
+    }));
+
+    setTransactions(enrichedTransactions);
     setLoading(false);
   };
 
