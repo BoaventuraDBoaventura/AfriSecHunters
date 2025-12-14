@@ -89,9 +89,9 @@ export default function Programs() {
                 <CyberCard className="h-full">
                   {/* Company Info */}
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="h-12 w-12 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center overflow-hidden">
                       {program.company?.company_logo ? (
-                        <img src={program.company.company_logo} alt="" className="h-8 w-8 rounded" />
+                        <img src={program.company.company_logo} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <Building2 className="h-6 w-6 text-primary" />
                       )}
