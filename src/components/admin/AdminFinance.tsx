@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, FileText, Download, Percent, Users } from 'lucide-react';
+import { DollarSign, TrendingUp, FileText, Download, Percent, Users, CheckCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/lib/exportCsv';
 import { exportToPdf } from '@/lib/exportPdf';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -32,6 +31,8 @@ interface Transaction {
   status: string;
   deposit_status: string | null;
   gibrapay_status: string | null;
+  pentester_paid: boolean;
+  pentester_paid_at: string | null;
   created_at: string;
   completed_at: string | null;
   pentester?: {
@@ -53,8 +54,46 @@ interface AdminFinanceProps {
 export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
+
+  const handleMarkAsPaid = async (transactionId: string, reportId: string) => {
+    setMarkingPaid(transactionId);
+    
+    const { error: txError } = await supabase
+      .from('platform_transactions')
+      .update({
+        pentester_paid: true,
+        pentester_paid_at: new Date().toISOString(),
+        status: 'completed'
+      })
+      .eq('id', transactionId);
+
+    if (txError) {
+      toast({
+        title: 'Erro',
+        description: 'Erro ao marcar como pago.',
+        variant: 'destructive'
+      });
+      setMarkingPaid(null);
+      return;
+    }
+
+    // Update report status to paid
+    await supabase
+      .from('reports')
+      .update({ status: 'paid' })
+      .eq('id', reportId);
+
+    toast({
+      title: 'Sucesso!',
+      description: 'Transação marcada como paga.'
+    });
+
+    setMarkingPaid(null);
+    fetchTransactions();
+  };
 
   useEffect(() => {
     fetchTransactions();
@@ -284,7 +323,8 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
                     <th className="py-3 px-4">Comissão</th>
                     <th className="py-3 px-4">Para Hunter</th>
                     <th className="py-3 px-4">Depósito</th>
-                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Pago</th>
+                    <th className="py-3 px-4">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -320,10 +360,37 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
                       </td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          t.status === 'completed' ? 'bg-primary/20 text-primary' : 'bg-warning/20 text-warning'
+                          t.pentester_paid ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
                         }`}>
-                          {t.status === 'completed' ? 'Concluído' : 'Pendente'}
+                          {t.pentester_paid ? 'Sim' : 'Não'}
                         </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {!t.pentester_paid ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-success text-success hover:bg-success/10 text-xs"
+                            onClick={() => handleMarkAsPaid(t.id, t.report_id)}
+                            disabled={markingPaid === t.id}
+                          >
+                            {markingPaid === t.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <>
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Pago
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {t.pentester_paid_at 
+                              ? format(new Date(t.pentester_paid_at), "dd/MM HH:mm", { locale: ptBR })
+                              : '—'
+                            }
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
