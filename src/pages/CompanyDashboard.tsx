@@ -188,7 +188,7 @@ export default function CompanyDashboard() {
     }
 
     if (!companyPhoneNumber) {
-      toast({ title: 'Erro', description: 'Insira o número de telefone para a transferência.', variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Insira o número de telefone para receber o USSD.', variant: 'destructive' });
       return;
     }
 
@@ -201,33 +201,34 @@ export default function CompanyDashboard() {
       const grossAmount = amount + (amount * platformFee / 100);
       const pentesterReceives = amount - (amount * pentesterDeduction / 100);
 
-      const { error } = await supabase
-        .from('platform_transactions')
-        .insert({
-          report_id: report.id,
-          company_id: user?.id,
-          pentester_id: report.pentester_id,
-          gross_amount: grossAmount,
-          platform_fee: amount * platformFee / 100,
-          net_amount: pentesterReceives,
-          status: 'pending',
-          deposit_status: 'pending',
-          payout_type: 'pending',
-          gibrapay_status: 'waiting_deposit',
-          wallet_type: mobileWalletType,
-          phone_number: companyPhoneNumber,
-        });
+      // Call the GibaPay payment request edge function to send USSD
+      const { data, error } = await supabase.functions.invoke('request-gibrapay-payment', {
+        body: {
+          phoneNumber: companyPhoneNumber,
+          amount: grossAmount,
+          reportId: report.id,
+          companyId: user?.id,
+          pentesterId: report.pentester_id,
+          grossAmount: grossAmount,
+          platformFee: amount * platformFee / 100,
+          netAmount: pentesterReceives,
+        }
+      });
 
       if (error) throw error;
 
-      setDepositSubmitted(true);
-      toast({ 
-        title: 'Pedido Registado!', 
-        description: 'Faça o depósito conforme as instruções. O admin confirmará o recebimento.'
-      });
+      if (data?.success) {
+        setDepositSubmitted(true);
+        toast({ 
+          title: 'USSD Enviado!', 
+          description: 'Confirme o pagamento no seu telefone para completar a transação.'
+        });
+      } else {
+        throw new Error(data?.error || 'Falha ao enviar USSD');
+      }
     } catch (error: any) {
-      console.error('Error creating deposit request:', error);
-      toast({ title: 'Erro', description: error.message || 'Erro ao registar pedido.', variant: 'destructive' });
+      console.error('Error creating payment request:', error);
+      toast({ title: 'Erro', description: error.message || 'Erro ao enviar pedido de pagamento.', variant: 'destructive' });
     } finally {
       setPaymentProcessing(false);
     }
@@ -712,26 +713,20 @@ export default function CompanyDashboard() {
           
           {depositSubmitted ? (
             <div className="space-y-4 py-2">
-              <div className="p-4 bg-warning/10 border-2 border-warning rounded-lg space-y-3">
-                <h4 className="font-bold text-warning flex items-center gap-2">
+              <div className="p-4 bg-success/10 border-2 border-success rounded-lg space-y-3">
+                <h4 className="font-bold text-success flex items-center gap-2">
                   <Smartphone className="h-5 w-5" />
-                  Instruções de Depósito
+                  USSD Enviado com Sucesso!
                 </h4>
                 
                 <div className="space-y-2 text-sm">
                   <p className="text-foreground">
-                    Transfira o valor total para a wallet GibaPay da plataforma:
+                    Um popup USSD foi enviado para o número <span className="font-mono font-bold text-primary">{companyPhoneNumber}</span>
                   </p>
                   
                   <div className="p-3 bg-background rounded border border-border">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-muted-foreground">Número M-Pesa:</span>
-                      <span className="font-mono font-bold text-lg text-primary">
-                        {platformMpesaNumber || 'Não configurado'}
-                      </span>
-                    </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Valor a transferir:</span>
+                      <span className="text-muted-foreground">Valor a confirmar:</span>
                       <span className="font-mono font-bold text-lg text-primary">
                         MZN {((parseFloat(paymentAmount) || 0) + (parseFloat(paymentAmount) * platformFee / 100 || 0)).toLocaleString()}
                       </span>
@@ -739,23 +734,19 @@ export default function CompanyDashboard() {
                   </div>
                   
                   <div className="text-xs text-muted-foreground space-y-1 mt-3">
-                    <p>📱 Abra a aplicação M-Pesa ou E-Mola</p>
-                    <p>💸 Transfira para o número acima</p>
-                    <p>⏳ O admin confirmará o recebimento</p>
-                    <p>✅ O pentester será pago automaticamente via GibaPay</p>
+                    <p>📱 Verifique o popup USSD no seu telefone</p>
+                    <p>✅ Confirme o pagamento inserindo o PIN</p>
+                    <p>⏳ O admin verificará a transação</p>
+                    <p>💸 O pentester receberá <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span></p>
                   </div>
                 </div>
-              </div>
-              
-              <div className="p-3 bg-muted/30 rounded border border-border text-xs text-muted-foreground">
-                <p><strong>Nota:</strong> O pagamento será processado após confirmação do admin. O pentester receberá <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span>.</p>
               </div>
               
               <Button 
                 className="w-full"
                 onClick={closePaymentDialog}
               >
-                Entendido, Já Transferi
+                Entendido, Já Confirmei
               </Button>
             </div>
           ) : (
@@ -845,9 +836,9 @@ export default function CompanyDashboard() {
                 {paymentProcessing ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                  <DollarSign className="h-4 w-4 mr-2" />
+                  <Smartphone className="h-4 w-4 mr-2" />
                 )}
-                Continuar para Instruções de Depósito
+                {paymentProcessing ? 'Enviando USSD...' : 'Enviar USSD de Pagamento'}
               </Button>
             </div>
           )}
