@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CyberCard } from '@/components/ui/CyberCard';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, FileText, Download, Percent, Users, CheckCircle, Loader2 } from 'lucide-react';
+import { DollarSign, TrendingUp, FileText, Download, Percent, Users, CheckCircle, Loader2, Wallet, Send, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/lib/exportCsv';
@@ -35,8 +35,11 @@ interface Transaction {
   pentester_paid_at: string | null;
   created_at: string;
   completed_at: string | null;
+  phone_number: string | null;
+  wallet_type: string | null;
   pentester?: {
     display_name: string | null;
+    payout_method: string | null;
     payout_details: {
       phone_number?: string;
     } | null;
@@ -55,7 +58,10 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
   const { toast } = useToast();
 
   const handleMarkAsPaid = async (transactionId: string, reportId: string) => {
@@ -97,7 +103,73 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
 
   useEffect(() => {
     fetchTransactions();
+    fetchWalletBalance();
   }, [dateFrom, dateTo]);
+
+  const fetchWalletBalance = async () => {
+    setLoadingBalance(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-gibrapay-balance');
+      if (!error && data?.success) {
+        setWalletBalance(data.balance);
+      }
+    } catch (err) {
+      console.error('Error fetching balance:', err);
+    }
+    setLoadingBalance(false);
+  };
+
+  const handleWithdraw = async (transaction: Transaction) => {
+    const phoneNumber = transaction.phone_number || transaction.pentester?.payout_details?.phone_number;
+    const walletType = transaction.wallet_type || transaction.pentester?.payout_method;
+    
+    if (!phoneNumber) {
+      toast({
+        title: 'Erro',
+        description: 'Número de telefone do pentester não encontrado.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setWithdrawing(transaction.id);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('process-gibrapay-payout', {
+        body: {
+          reportId: transaction.report_id,
+          transactionId: transaction.id,
+          phoneNumber,
+          walletType
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: 'Withdraw Enviado!',
+          description: `Pagamento enviado para ${phoneNumber} via GibaPay.`
+        });
+        fetchTransactions();
+        fetchWalletBalance();
+      } else {
+        toast({
+          title: 'Erro no Withdraw',
+          description: data?.error || 'Falha ao processar o pagamento.',
+          variant: 'destructive'
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Erro',
+        description: err.message || 'Erro ao processar withdraw.',
+        variant: 'destructive'
+      });
+    }
+
+    setWithdrawing(null);
+  };
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -130,7 +202,7 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
 
     // Fetch pentesters and reports in parallel
     const [pentestersResult, reportsResult] = await Promise.all([
-      supabase.from('profiles').select('id, display_name, payout_details').in('id', pentesterIds),
+      supabase.from('profiles').select('id, display_name, payout_method, payout_details').in('id', pentesterIds),
       supabase.from('reports').select('id, title').in('id', reportIds)
     ]);
 
@@ -289,12 +361,35 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
 
         {/* Transactions Table */}
         <CyberCard>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
             <h3 className="font-semibold flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
               Histórico de Transações
             </h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* GibaPay Balance */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/30 rounded-lg">
+                <Wallet className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">
+                  Saldo GibaPay: {loadingBalance ? (
+                    <Loader2 className="h-3 w-3 animate-spin inline ml-1" />
+                  ) : (
+                    <span className="text-primary font-mono">
+                      MZN {walletBalance?.toLocaleString() ?? '—'}
+                    </span>
+                  )}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={fetchWalletBalance}
+                  disabled={loadingBalance}
+                >
+                  <RefreshCw className={`h-3 w-3 ${loadingBalance ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              
               <Button variant="outline" size="sm" onClick={handleExportCsv} className="border-primary text-primary hover:bg-primary/10">
                 <Download className="h-4 w-4 mr-2" />
                 CSV
@@ -367,22 +462,46 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
                       </td>
                       <td className="py-3 px-4">
                         {!t.pentester_paid ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-success text-success hover:bg-success/10 text-xs"
-                            onClick={() => handleMarkAsPaid(t.id, t.report_id)}
-                            disabled={markingPaid === t.id}
-                          >
-                            {markingPaid === t.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <>
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Pago
-                              </>
+                          <div className="flex gap-1">
+                            {/* Withdraw Button - only if deposit confirmed */}
+                            {t.deposit_status === 'confirmed' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-primary text-primary hover:bg-primary/10 text-xs"
+                                onClick={() => handleWithdraw(t)}
+                                disabled={withdrawing === t.id}
+                                title="Enviar via GibaPay"
+                              >
+                                {withdrawing === t.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Send className="h-3 w-3 mr-1" />
+                                    Withdraw
+                                  </>
+                                )}
+                              </Button>
                             )}
-                          </Button>
+                            {/* Manual Mark as Paid */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-success text-success hover:bg-success/10 text-xs"
+                              onClick={() => handleMarkAsPaid(t.id, t.report_id)}
+                              disabled={markingPaid === t.id}
+                              title="Marcar como pago manualmente"
+                            >
+                              {markingPaid === t.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Pago
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">
                             {t.pentester_paid_at 
