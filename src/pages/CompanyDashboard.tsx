@@ -627,7 +627,7 @@ export default function CompanyDashboard() {
                 }
               </p>
               <p className="text-xs text-primary mt-2">
-                💳 Taxa de plataforma: {platformFee}% será deduzida do pagamento
+                💳 Taxa de plataforma: {platformFee}% será adicionada ao valor total
               </p>
             </div>
           </div>
@@ -679,7 +679,7 @@ export default function CompanyDashboard() {
           <div className="space-y-4 py-2">
             {/* Editable Amount Field */}
             <div>
-              <label className="text-sm font-medium text-foreground">Valor da Recompensa (MZN)</label>
+              <label className="text-sm font-medium text-foreground">Recompensa para o Pentester (MZN)</label>
               <Input
                 type="number"
                 placeholder="1000"
@@ -696,9 +696,22 @@ export default function CompanyDashboard() {
                   paymentMethodDialog?.program?.reward_low?.toLocaleString()
                 }
               </p>
-              <p className="text-xs text-primary mt-1">
-                💳 Taxa de plataforma: {platformFee}% ({(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()} MZN)
-              </p>
+              
+              {/* Payment breakdown */}
+              <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pentester recebe:</span>
+                  <span className="text-success font-medium">MZN {(parseFloat(paymentAmount) || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Taxa plataforma ({platformFee}%):</span>
+                  <span className="text-muted-foreground">MZN {(parseFloat(paymentAmount) * platformFee / 100 || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold border-t border-border pt-1 mt-1">
+                  <span className="text-foreground">Total a ser transferido:</span>
+                  <span className="text-primary">MZN {((parseFloat(paymentAmount) || 0) + (parseFloat(paymentAmount) * platformFee / 100 || 0)).toLocaleString()}</span>
+                </div>
+              </div>
             </div>
 
             {/* Payment Method - Mobile Wallet Only */}

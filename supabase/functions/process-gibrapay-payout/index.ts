@@ -186,11 +186,15 @@ serve(async (req) => {
     const platformFeePercentage = feeData ? parseFloat(String(feeData)) / 100 : 0.10;
     logStep("Platform fee fetched", { percentage: platformFeePercentage * 100 });
 
-    const grossAmount = effectiveRewardAmount || 0;
-    const platformFee = Math.round(grossAmount * platformFeePercentage * 100) / 100;
-    const netAmount = Math.round((grossAmount - platformFee) * 100) / 100;
+    // CORRECT LOGIC: Pentester receives full reward, platform fee is ADDED on top
+    // - netAmount = what pentester receives (the full reward defined by company)
+    // - platformFee = calculated fee added on top
+    // - grossAmount = total transferred from GibaPay wallet (net + fee)
+    const netAmount = effectiveRewardAmount || 0;
+    const platformFee = Math.round(netAmount * platformFeePercentage * 100) / 100;
+    const grossAmount = Math.round((netAmount + platformFee) * 100) / 100;
 
-    logStep("Calculated amounts", { grossAmount, platformFee, netAmount });
+    logStep("Calculated amounts", { netAmount, platformFee, grossAmount });
 
     // For direct payments (company paying via mobile wallet), create transaction record first
     let existingTransactionId = transactionId;
