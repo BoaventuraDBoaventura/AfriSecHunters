@@ -55,20 +55,48 @@ async function processGibrapayRequest(
     const data = await response.json();
     logStep("Background: GibaPay response", { status: response.status, data });
 
-    const isSuccess = response.ok && data.status === "success";
+    // GibaPay API returns:
+    // - Root level "status": "success" or "error"
+    // - Inside "data": status can be "complete" or "failed"
+    const isApiSuccess = data.status === "success";
+    const isTransferComplete = data.data?.status === "complete";
+    const isSuccess = isApiSuccess && isTransferComplete;
 
     // Update transaction with result
     await supabaseClient
       .from("platform_transactions")
       .update({
-        gibrapay_status: isSuccess ? "completed" : "failed",
-        gibrapay_transaction_id: data.data?.id || data.transaction_id || null,
-        gibrapay_error: isSuccess ? null : (data.message || data.error || "Unknown error"),
+        gibrapay_status: isSuccess ? "complete" : (isApiSuccess ? "pending" : "failed"),
+        gibrapay_transaction_id: data.data?.id || null,
+        gibrapay_error: isSuccess ? null : (data.message || data.data?.status || "Unknown error"),
         deposit_status: isSuccess ? "confirmed" : "pending",
+        // If transfer completed, mark pentester as paid
+        ...(isSuccess && { 
+          pentester_paid: true,
+          pentester_paid_at: new Date().toISOString(),
+          status: "completed"
+        })
       })
       .eq("id", transactionId);
 
-    logStep("Background: Transaction updated", { transactionId, success: isSuccess });
+    // If successful, also update the report status to paid
+    if (isSuccess) {
+      const { data: txData } = await supabaseClient
+        .from("platform_transactions")
+        .select("report_id")
+        .eq("id", transactionId)
+        .single();
+      
+      if (txData?.report_id) {
+        await supabaseClient
+          .from("reports")
+          .update({ status: "paid" })
+          .eq("id", txData.report_id);
+        logStep("Background: Report marked as paid", { reportId: txData.report_id });
+      }
+    }
+
+    logStep("Background: Transaction updated", { transactionId, success: isSuccess, transferStatus: data.data?.status });
 
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
