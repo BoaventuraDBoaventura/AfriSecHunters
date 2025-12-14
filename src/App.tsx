@@ -21,6 +21,7 @@ import SubmitReport from "./pages/SubmitReport";
 import ReportDetail from "./pages/ReportDetail";
 import EditProfile from "./pages/EditProfile";
 import AdminDashboard from "./pages/AdminDashboard";
+import CertificateVerification from "./pages/CertificateVerification";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/reports/:id" element={<ReportDetail />} />
               <Route path="/profile" element={<EditProfile />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/certificate/:code" element={<CertificateVerification />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </NotificationProvider>
