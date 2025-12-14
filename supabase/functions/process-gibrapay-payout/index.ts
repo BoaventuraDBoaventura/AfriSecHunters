@@ -18,6 +18,11 @@ interface GibrapayTransferResponse {
   error?: string;
 }
 
+// Clean phone number - remove all non-numeric characters
+function cleanPhoneNumber(phone: string): string {
+  return phone.replace(/[^0-9]/g, '');
+}
+
 async function makeGibrapayTransfer(
   apiKey: string,
   walletId: string,
@@ -25,7 +30,9 @@ async function makeGibrapayTransfer(
   amount: number,
   reference: string
 ): Promise<GibrapayTransferResponse> {
-  logStep("Making GibaPay transfer", { phoneNumber: phoneNumber.slice(-4), amount, reference });
+  // Clean the phone number before sending to API
+  const cleanedPhone = cleanPhoneNumber(phoneNumber);
+  logStep("Making GibaPay transfer", { phoneNumber: cleanedPhone, amount, reference });
   
   try {
     const response = await fetch("https://gibrapay.online/v1/transfer", {
@@ -36,7 +43,7 @@ async function makeGibrapayTransfer(
       },
       body: JSON.stringify({
         wallet_id: walletId,
-        number_phone: phoneNumber,
+        number_phone: cleanedPhone,
         amount: amount,
       }),
     });
