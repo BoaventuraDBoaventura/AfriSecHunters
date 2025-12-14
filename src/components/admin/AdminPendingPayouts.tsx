@@ -22,6 +22,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/lib/exportCsv';
+import { exportToPdf } from '@/lib/exportPdf';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -335,33 +336,40 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
     }
   };
 
-  const handleExport = () => {
-    const exportData = pendingPayouts.map(p => ({
-      hunter: p.pentester?.display_name || 'N/A',
-      valor: p.net_amount,
-      metodo: getPayoutMethodLabel(p.pentester?.payout_method || null),
-      banco: p.pentester?.payout_details?.bank_name || '',
-      conta: p.pentester?.payout_details?.account_number || '',
-      nib: p.pentester?.payout_details?.nib || '',
-      telefone: p.pentester?.payout_details?.phone_number || '',
-      paypal: p.pentester?.payout_details?.paypal_email || '',
-      data: format(new Date(p.created_at), 'dd/MM/yyyy'),
-      report: p.report?.title || p.report_id,
-    }));
+  const payoutColumns = [
+    { key: 'hunter' as const, label: 'Hunter' },
+    { key: 'valor' as const, label: 'Valor (MZN)' },
+    { key: 'metodo' as const, label: 'Método' },
+    { key: 'banco' as const, label: 'Banco' },
+    { key: 'conta' as const, label: 'Conta' },
+    { key: 'nib' as const, label: 'NIB' },
+    { key: 'telefone' as const, label: 'Telefone (M-Pesa)' },
+    { key: 'paypal' as const, label: 'PayPal Email' },
+    { key: 'data' as const, label: 'Data Pagamento' },
+    { key: 'report' as const, label: 'Report' },
+  ];
 
-    exportToCsv(exportData, 'pagamentos_pendentes', [
-      { key: 'hunter', label: 'Hunter' },
-      { key: 'valor', label: 'Valor (MZN)' },
-      { key: 'metodo', label: 'Método' },
-      { key: 'banco', label: 'Banco' },
-      { key: 'conta', label: 'Conta' },
-      { key: 'nib', label: 'NIB' },
-      { key: 'telefone', label: 'Telefone (M-Pesa)' },
-      { key: 'paypal', label: 'PayPal Email' },
-      { key: 'data', label: 'Data Pagamento Stripe' },
-      { key: 'report', label: 'Report' },
-    ]);
-    toast({ title: 'Exportado!', description: 'Lista de pagamentos pendentes baixada.' });
+  const getExportData = () => pendingPayouts.map(p => ({
+    hunter: p.pentester?.display_name || 'N/A',
+    valor: p.net_amount,
+    metodo: getPayoutMethodLabel(p.pentester?.payout_method || null),
+    banco: p.pentester?.payout_details?.bank_name || '',
+    conta: p.pentester?.payout_details?.account_number || '',
+    nib: p.pentester?.payout_details?.nib || '',
+    telefone: p.pentester?.payout_details?.phone_number || '',
+    paypal: p.pentester?.payout_details?.paypal_email || '',
+    data: format(new Date(p.created_at), 'dd/MM/yyyy'),
+    report: p.report?.title || p.report_id,
+  }));
+
+  const handleExportCsv = () => {
+    exportToCsv(getExportData(), 'pagamentos_pendentes', payoutColumns);
+    toast({ title: 'Exportado!', description: 'CSV de pagamentos pendentes baixado.' });
+  };
+
+  const handleExportPdf = () => {
+    exportToPdf(getExportData(), 'pagamentos_pendentes', payoutColumns, 'Pagamentos Pendentes - AfriSec Hunters');
+    toast({ title: 'Exportado!', description: 'PDF de pagamentos pendentes baixado.' });
   };
 
   if (loading) {
@@ -425,12 +433,22 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={handleExport} 
+              onClick={handleExportCsv} 
               className="border-primary text-primary hover:bg-primary/10"
               disabled={pendingPayouts.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
+              CSV
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleExportPdf} 
+              className="border-secondary text-secondary hover:bg-secondary/10"
+              disabled={pendingPayouts.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              PDF
             </Button>
           </div>
         </div>

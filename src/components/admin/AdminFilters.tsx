@@ -16,7 +16,7 @@ export interface DateRange {
 interface AdminFiltersProps {
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
-  onExport: (type: 'users' | 'programs' | 'reports' | 'all') => void;
+  onExport: (type: 'users' | 'programs' | 'reports' | 'all', format: 'csv' | 'pdf') => void;
   quickFilter: string;
   onQuickFilterChange: (filter: string) => void;
 }
@@ -129,16 +129,28 @@ export function AdminFilters({
 
       {/* Export Buttons */}
       <div className="flex items-center gap-2">
-        <Select onValueChange={(value) => onExport(value as any)}>
+        <Select onValueChange={(value) => onExport(value as 'users' | 'programs' | 'reports' | 'all', 'csv')}>
           <SelectTrigger className="w-[160px] h-9">
             <Download className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Exportar CSV" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="users">Exportar Usuários</SelectItem>
-            <SelectItem value="programs">Exportar Programas</SelectItem>
-            <SelectItem value="reports">Exportar Relatórios</SelectItem>
-            <SelectItem value="all">Exportar Tudo</SelectItem>
+            <SelectItem value="users">Usuários (CSV)</SelectItem>
+            <SelectItem value="programs">Programas (CSV)</SelectItem>
+            <SelectItem value="reports">Relatórios (CSV)</SelectItem>
+            <SelectItem value="all">Tudo (CSV)</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select onValueChange={(value) => onExport(value as 'users' | 'programs' | 'reports' | 'all', 'pdf')}>
+          <SelectTrigger className="w-[160px] h-9">
+            <Download className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Exportar PDF" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="users">Usuários (PDF)</SelectItem>
+            <SelectItem value="programs">Programas (PDF)</SelectItem>
+            <SelectItem value="reports">Relatórios (PDF)</SelectItem>
+            <SelectItem value="all">Tudo (PDF)</SelectItem>
           </SelectContent>
         </Select>
       </div>
