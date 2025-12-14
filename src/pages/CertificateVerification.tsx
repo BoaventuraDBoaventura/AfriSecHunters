@@ -69,6 +69,15 @@ export default function CertificateVerification() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getUser();
+  }, []);
 
   useEffect(() => {
     if (code) {
@@ -323,14 +332,16 @@ export default function CertificateVerification() {
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Button 
-                  onClick={handleDownloadPdf}
-                  size="lg"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Download className="mr-2 h-5 w-5" />
-                  Baixar Certificado PDF
-                </Button>
+                {currentUserId === certificate.pentester_id && (
+                  <Button 
+                    onClick={handleDownloadPdf}
+                    size="lg"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Download className="mr-2 h-5 w-5" />
+                    Baixar Certificado PDF
+                  </Button>
+                )}
                 <Button 
                   variant="outline" 
                   size="lg"
