@@ -7,12 +7,14 @@ import { useState } from 'react';
 
 interface CertificateCardProps {
   id: string;
+  pentesterId: string;
   pentesterName: string;
   rankTitle: string;
   points: number;
   issuedAt: string;
   certificateCode: string;
   compact?: boolean;
+  isOwner?: boolean;
 }
 
 const RANK_COLORS: Record<string, string> = {
@@ -35,12 +37,14 @@ const RANK_ICONS: Record<string, string> = {
 
 export function CertificateCard({
   id,
+  pentesterId,
   pentesterName,
   rankTitle,
   points,
   issuedAt,
   certificateCode,
   compact = false,
+  isOwner = false,
 }: CertificateCardProps) {
   const [copied, setCopied] = useState(false);
   const verificationUrl = `${window.location.origin}/certificate/${certificateCode}`;
@@ -87,9 +91,11 @@ export function CertificateCard({
               <ExternalLink className="h-4 w-4" />
             </Button>
           </Link>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={handleDownload}>
-            <Download className="h-4 w-4" />
-          </Button>
+          {isOwner && (
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={handleDownload}>
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -124,9 +130,11 @@ export function CertificateCard({
         <Button variant="outline" size="sm" className="border-primary/50 text-primary hover:bg-primary/10" onClick={handleCopyLink}>
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </Button>
-        <Button variant="outline" size="sm" className="border-primary/50 text-primary hover:bg-primary/10" onClick={handleDownload}>
-          <Download className="h-3 w-3" />
-        </Button>
+        {isOwner && (
+          <Button variant="outline" size="sm" className="border-primary/50 text-primary hover:bg-primary/10" onClick={handleDownload}>
+            <Download className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     </div>
   );
