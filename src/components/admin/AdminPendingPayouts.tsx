@@ -543,6 +543,7 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
                 <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase">
                   <th className="py-3 px-4">Report</th>
                   <th className="py-3 px-4">Hunter</th>
+                  <th className="py-3 px-4">Tel. Hunter</th>
                   <th className="py-3 px-4">Valor Total</th>
                   <th className="py-3 px-4">Taxa Plataforma</th>
                   <th className="py-3 px-4">Para Hunter</th>
@@ -560,6 +561,9 @@ export function AdminPendingPayouts({ dateFrom, dateTo }: AdminPendingPayoutsPro
                       <span className="font-medium">
                         {deposit.pentester?.display_name || 'Hunter'}
                       </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-sm text-primary">
+                      {deposit.pentester?.payout_details?.phone_number || 'Não definido'}
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-secondary">
                       MZN {Number(deposit.gross_amount).toLocaleString()}

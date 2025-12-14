@@ -30,8 +30,19 @@ interface Transaction {
   platform_fee: number;
   net_amount: number;
   status: string;
+  deposit_status: string | null;
+  gibrapay_status: string | null;
   created_at: string;
   completed_at: string | null;
+  pentester?: {
+    display_name: string | null;
+    payout_details: {
+      phone_number?: string;
+    } | null;
+  };
+  report?: {
+    title: string;
+  };
 }
 
 interface AdminFinanceProps {
@@ -53,7 +64,16 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
     setLoading(true);
     let query = supabase
       .from('platform_transactions')
-      .select('*')
+      .select(`
+        *,
+        pentester:profiles!platform_transactions_pentester_id_fkey (
+          display_name,
+          payout_details
+        ),
+        report:reports!platform_transactions_report_id_fkey (
+          title
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (dateFrom) {
@@ -68,7 +88,7 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
     const { data, error } = await query;
 
     if (!error && data) {
-      setTransactions(data);
+      setTransactions(data as unknown as Transaction[]);
     }
     setLoading(false);
   };
@@ -237,10 +257,13 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
                 <thead>
                   <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase">
                     <th className="py-3 px-4">Data</th>
-                    <th className="py-3 px-4">Report ID</th>
+                    <th className="py-3 px-4">Report</th>
+                    <th className="py-3 px-4">Hunter</th>
+                    <th className="py-3 px-4">Tel. Hunter</th>
                     <th className="py-3 px-4">Valor Bruto</th>
-                    <th className="py-3 px-4">Comissão (10%)</th>
-                    <th className="py-3 px-4">Valor Líquido</th>
+                    <th className="py-3 px-4">Comissão</th>
+                    <th className="py-3 px-4">Para Hunter</th>
+                    <th className="py-3 px-4">Depósito</th>
                     <th className="py-3 px-4">Status</th>
                   </tr>
                 </thead>
@@ -248,10 +271,16 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
                   {transactions.map(t => (
                     <tr key={t.id} className="border-b border-border/50 hover:bg-primary/5">
                       <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
-                        {format(new Date(t.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        {format(new Date(t.created_at), "dd/MM HH:mm", { locale: ptBR })}
                       </td>
-                      <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
-                        {t.report_id.slice(0, 8)}...
+                      <td className="py-3 px-4 text-sm max-w-32 truncate">
+                        {t.report?.title || t.report_id.slice(0, 8) + '...'}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {t.pentester?.display_name || 'N/A'}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-sm text-primary">
+                        {t.pentester?.payout_details?.phone_number || 'N/A'}
                       </td>
                       <td className="py-3 px-4 font-mono text-foreground">
                         MZN {Number(t.gross_amount).toLocaleString()}
@@ -261,6 +290,13 @@ export function AdminFinance({ dateFrom, dateTo }: AdminFinanceProps) {
                       </td>
                       <td className="py-3 px-4 font-mono text-secondary">
                         MZN {Number(t.net_amount).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          t.deposit_status === 'confirmed' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
+                        }`}>
+                          {t.deposit_status === 'confirmed' ? 'Confirmado' : 'Pendente'}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
