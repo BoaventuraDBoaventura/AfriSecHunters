@@ -47,8 +47,8 @@ export function CertificateCard({
   const rankColor = RANK_COLORS[rankTitle] || RANK_COLORS['Hunter'];
   const rankIcon = RANK_ICONS[rankTitle] || '★';
 
-  const handleDownload = () => {
-    generateCertificatePdf({
+  const handleDownload = async () => {
+    await generateCertificatePdf({
       pentesterName,
       rankTitle,
       points,
