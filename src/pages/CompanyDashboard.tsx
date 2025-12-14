@@ -59,6 +59,8 @@ export default function CompanyDashboard() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [verifyingBalance, setVerifyingBalance] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
   const [platformFee, setPlatformFee] = useState(10); // Default 10%
   const [pentesterDeduction, setPentesterDeduction] = useState(20); // Default 20%
 
@@ -234,17 +236,72 @@ export default function CompanyDashboard() {
     }
   };
 
+  const verifyBalanceAndClose = async () => {
+    setVerifyingBalance(true);
+    setBalanceError(null);
+    
+    try {
+      // Calculate the required amount (reward + platform fee)
+      const amount = parseFloat(paymentAmount) || 0;
+      const requiredAmount = amount + (amount * platformFee / 100);
+
+      // Check GibaPay balance
+      const { data, error } = await supabase.functions.invoke('check-gibrapay-balance');
+      
+      if (error) {
+        setBalanceError('Erro ao verificar saldo. Tente novamente.');
+        return;
+      }
+
+      if (!data?.success) {
+        setBalanceError(data?.error || 'Não foi possível verificar o saldo.');
+        return;
+      }
+
+      const currentBalance = parseFloat(data.balance) || 0;
+      
+      if (currentBalance < requiredAmount) {
+        setBalanceError(
+          `Saldo insuficiente no GibaPay. Saldo atual: MZN ${currentBalance.toLocaleString()}. ` +
+          `Necessário: MZN ${requiredAmount.toLocaleString()}. ` +
+          `Aguarde a confirmação do depósito ou entre em contato com o suporte.`
+        );
+        return;
+      }
+
+      // Balance is sufficient, close dialog
+      toast({
+        title: 'Pagamento verificado!',
+        description: 'O saldo foi confirmado. O admin processará o pagamento ao pentester.',
+      });
+      
+      setPaymentMethodDialog(null);
+      setDepositSubmitted(false);
+      setPaymentAmount('');
+      setCompanyPhoneNumber('');
+      setBalanceError(null);
+      fetchData();
+    } catch (error: any) {
+      console.error('Error verifying balance:', error);
+      setBalanceError('Erro ao verificar saldo. Tente novamente.');
+    } finally {
+      setVerifyingBalance(false);
+    }
+  };
+
   const closePaymentDialog = () => {
     setPaymentMethodDialog(null);
     setDepositSubmitted(false);
     setPaymentAmount('');
     setCompanyPhoneNumber('');
+    setBalanceError(null);
     fetchData();
   };
 
   const openPaymentDialog = (report: ReportWithDetails) => {
     setPaymentMethodDialog(report);
     setPaymentAmount(report.reward_amount?.toString() || '');
+    setBalanceError(null);
   };
 
   if (authLoading || loading) {
@@ -736,18 +793,43 @@ export default function CompanyDashboard() {
                   <div className="text-xs text-muted-foreground space-y-1 mt-3">
                     <p>📱 Verifique o popup USSD no seu telefone</p>
                     <p>✅ Confirme o pagamento inserindo o PIN</p>
-                    <p>⏳ O admin verificará a transação</p>
+                    <p>⏳ O sistema verificará se o saldo foi recebido</p>
                     <p>💸 O pentester receberá <span className="text-success font-medium">MZN {((parseFloat(paymentAmount) || 0) - (parseFloat(paymentAmount) * pentesterDeduction / 100 || 0)).toLocaleString()}</span></p>
                   </div>
                 </div>
               </div>
               
-              <Button 
-                className="w-full"
-                onClick={closePaymentDialog}
-              >
-                Entendido, Já Confirmei
-              </Button>
+              {balanceError && (
+                <div className="p-3 bg-destructive/10 border border-destructive rounded-lg">
+                  <p className="text-sm text-destructive">{balanceError}</p>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  className="flex-1"
+                  onClick={closePaymentDialog}
+                >
+                  Fechar
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={verifyBalanceAndClose}
+                  disabled={verifyingBalance}
+                >
+                  {verifyingBalance ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : balanceError ? (
+                    'Tentar Novamente'
+                  ) : (
+                    'Já Confirmei'
+                  )}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4 py-2">
