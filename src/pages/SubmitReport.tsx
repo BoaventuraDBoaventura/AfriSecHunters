@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout/Layout';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EvidenceUpload } from '@/components/reports/EvidenceUpload';
 import { supabase } from '@/integrations/supabase/client';
-import { VulnerabilityType, SeverityLevel, VULNERABILITY_LABELS, SEVERITY_LABELS } from '@/types/database';
+import { VulnerabilityType, SeverityLevel, VULNERABILITY_LABELS, SEVERITY_LABELS, Program, Profile } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Bug, Send, AlertCircle, Paperclip } from 'lucide-react';
 
@@ -117,6 +117,22 @@ export default function SubmitReport() {
   const [recommendation, setRecommendation] = useState('');
   const [proofOfConcept, setProofOfConcept] = useState('');
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [programDetails, setProgramDetails] = useState<(Program & { company: Profile }) | null>(null);
+
+  useEffect(() => {
+    const fetchProgramDetails = async () => {
+      if (!programId) return;
+      const { data } = await supabase
+        .from('programs')
+        .select('*, company:profiles!programs_company_id_fkey(*)')
+        .eq('id', programId)
+        .single();
+      if (data) {
+        setProgramDetails(data as Program & { company: Profile });
+      }
+    };
+    fetchProgramDetails();
+  }, [programId]);
 
   const handleTypeChange = (type: VulnerabilityType) => {
     setVulnerabilityType(type);
@@ -141,7 +157,7 @@ export default function SubmitReport() {
 
     setLoading(true);
 
-    const { error } = await supabase.from('reports').insert({
+    const { data: reportData, error } = await supabase.from('reports').insert({
       program_id: programId,
       pentester_id: user.id,
       title: title.trim(),
@@ -153,7 +169,7 @@ export default function SubmitReport() {
       recommendation: recommendation.trim() || null,
       proof_of_concept: proofOfConcept.trim() || null,
       evidence_urls: evidenceUrls.length > 0 ? evidenceUrls : null,
-    });
+    }).select().single();
 
     setLoading(false);
 
@@ -161,6 +177,21 @@ export default function SubmitReport() {
       toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Relatório enviado!', description: 'Seu relatório foi enviado para análise.' });
+      
+      // Send notification email to company
+      if (programDetails?.company_id) {
+        supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'new_report_received',
+            reportId: reportData?.id,
+            companyId: programDetails.company_id,
+            reportTitle: title.trim(),
+            programTitle: programDetails.title,
+            severity
+          }
+        }).catch(err => console.error('Error sending notification:', err));
+      }
+      
       navigate('/dashboard');
     }
   };
