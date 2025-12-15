@@ -138,6 +138,20 @@ export default function CompanyDashboard() {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Relatório aceito!', description: `Recompensa de MZN ${rewardAmount} definida.` });
+      
+      // Send notification email to pentester
+      supabase.functions.invoke('send-notification-email', {
+        body: {
+          type: 'report_accepted',
+          reportId: actionDialog.report.id,
+          pentesterId: actionDialog.report.pentester_id,
+          reportTitle: actionDialog.report.title,
+          programTitle: actionDialog.report.program?.title || '',
+          severity: actionDialog.report.severity,
+          rewardAmount: parseFloat(rewardAmount)
+        }
+      }).catch(err => console.error('Error sending notification:', err));
+      
       fetchData();
     }
     setProcessing(false);
