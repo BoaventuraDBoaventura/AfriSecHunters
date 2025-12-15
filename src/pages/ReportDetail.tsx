@@ -37,6 +37,17 @@ interface ReportWithRelations extends Report {
   pentester: Profile;
 }
 
+// Helper function to get expected reward based on severity
+const getExpectedReward = (severity: string, program: Program): number => {
+  switch (severity) {
+    case 'critical': return program.reward_critical || 5000;
+    case 'high': return program.reward_high || 2000;
+    case 'medium': return program.reward_medium || 500;
+    case 'low': return program.reward_low || 100;
+    default: return 0;
+  }
+};
+
 export default function ReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -151,6 +162,52 @@ export default function ReportDetail() {
                 )}
               </div>
             </CyberCard>
+
+            {/* Payment Pending Banner - Shows when report is accepted */}
+            {report.status === 'accepted' && (
+              <div className="rounded-lg border-2 border-amber-500/50 bg-amber-500/10 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-amber-500">Pagamento Pendente</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Relatório aceito. Aguardando processamento do pagamento.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Recompensa</p>
+                    <p className="text-xl font-bold text-amber-500">
+                      MZN {(report.reward_amount || getExpectedReward(report.severity, report.program)).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Payment Completed Banner - Shows when report is paid */}
+            {report.status === 'paid' && report.reward_amount && (
+              <div className="rounded-lg border-2 border-primary/50 bg-primary/10 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-primary">Pagamento Realizado</h3>
+                    <p className="text-sm text-muted-foreground">
+                      O pagamento foi processado com sucesso.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Valor Pago</p>
+                    <p className="text-xl font-bold text-primary">
+                      MZN {report.reward_amount.toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tabs for Report Details and Chat */}
             <Tabs defaultValue="details" className="w-full">
