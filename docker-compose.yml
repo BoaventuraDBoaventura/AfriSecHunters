@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  afrisec-hunters:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: afrisec-hunters
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - proxy-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+networks:
+  proxy-network:
+    external: true
