@@ -1,31 +1,39 @@
-# Build stage
+# Etapa de build
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copiar ficheiros de dependências
 COPY package*.json ./
 COPY bun.lockb ./
 
-# Install dependencies
-RUN npm install
+# Instalar dependências
+RUN npm ci
 
-# Copy source code
+# Copiar código fonte
 COPY . .
 
-# Build the app
+# Variáveis de ambiente para o build
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_SUPABASE_PROJECT_ID
+
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+ENV VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID
+
+# Build da aplicação
 RUN npm run build
 
-# Production stage
+# Etapa de produção
 FROM nginx:alpine
 
-# Copy built assets from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
+# Copiar configuração do nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 80
+# Copiar ficheiros buildados
+COPY --from=builder /app/dist /usr/share/nginx/html
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
